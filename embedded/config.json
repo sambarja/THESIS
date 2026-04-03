@@ -1,0 +1,7 @@
+{
+  "wifi_ssid":    "YOUR_WIFI_SSID",
+  "wifi_pass":    "YOUR_WIFI_PASSWORD",
+  "backend_url":  "http://192.168.1.100:5000",
+  "vehicle_id":   "YOUR_SUPABASE_VEHICLE_UUID",
+  "poll_s":       30
+}

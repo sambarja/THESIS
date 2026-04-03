@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import Navbar from "react-bootstrap/Navbar";
 import Nav from "react-bootstrap/Nav";
+import Container from "react-bootstrap/Container";
 
 function MyNavbar() {
   const [dateTime, setDateTime] = useState(new Date());
@@ -22,49 +23,60 @@ function MyNavbar() {
 
   // map paths to titles
   const pageTitles = {
-    "/": "Dashboard",
-    "/alerts": "Alerts",
-    "/logs": "Logs",
-    "/settings": "Settings",
+    "/":          "Dashboard",
+    "/map":       "Live Map",
+    "/analytics": "Analytics",
+    "/alerts":    "Alerts",
+    "/logs":      "Logs",
+    "/settings":  "Settings",
   };
 
   const currentTitle = pageTitles[location.pathname] || "Fleet Manager";
 
   return (
-    <Navbar bg="dark" data-bs-theme="dark" expand="lg" className="w-100">
-      <div className="d-flex justify-content-between align-items-center w-100 px-3">
-        {/* Left: Logo + Nav Links */}
-        <div className="d-flex align-items-center">
-          <Navbar.Brand as="span" className="mx-auto text-white">
+    <Navbar bg="dark" data-bs-theme="dark" expand="lg" className="w-100 py-0">
+      <Container fluid className="px-3">
+        {/* Brand */}
+        <Navbar.Brand as="span" className="text-white d-flex align-items-center gap-2 py-2">
+          <img
+            src="/tempLogo.svg"
+            alt="Logo"
+            width="32"
+            height="32"
+            className="d-inline-block"
+          />
+          <span className="d-none d-sm-inline">Fleet Manager</span>
+        </Navbar.Brand>
 
-            <img
-              src="/tempLogo.svg"
-              alt="Logo"
-              width="40"
-              height="40"
-              className="d-inline-block align-top me-2"
-            />
-            Fleet Manager
-          </Navbar.Brand>
+        {/* Mobile: page title in center */}
+        <span className="text-white fw-semibold d-lg-none mx-auto">{currentTitle}</span>
+
+        {/* Hamburger toggle */}
+        <Navbar.Toggle aria-controls="main-nav" />
+
+        {/* Collapsible nav */}
+        <Navbar.Collapse id="main-nav">
           <Nav className="me-auto">
             <Nav.Link as={NavLink} to="/">Dashboard</Nav.Link>
+            <Nav.Link as={NavLink} to="/map">Map</Nav.Link>
+            <Nav.Link as={NavLink} to="/analytics">Analytics</Nav.Link>
             <Nav.Link as={NavLink} to="/alerts">Alerts</Nav.Link>
             <Nav.Link as={NavLink} to="/logs">Logs</Nav.Link>
             <Nav.Link as={NavLink} to="/settings">Settings</Nav.Link>
           </Nav>
-        </div>
 
-        {/* Center: Dynamic Title */}
-        <div className="text-center flex-grow-1">
-          <h5 className="text-white m-0">{currentTitle}</h5>
-        </div>
+          {/* Desktop: page title center — push clock to right */}
+          <div className="text-white text-center flex-grow-1 d-none d-lg-block">
+            <span className="fw-semibold">{currentTitle}</span>
+          </div>
 
-        {/* Right: Day & Time */}
-        <div className="text-end text-white">
-          <div>{day}</div>
-          <div>{time}</div>
-        </div>
-      </div>
+          {/* Clock — shown inline in collapse on mobile, right-aligned on desktop */}
+          <div className="text-white text-end py-2 py-lg-0" style={{ fontSize: '0.82rem', lineHeight: 1.4 }}>
+            <div className="d-none d-lg-block">{day}</div>
+            <div>{time}</div>
+          </div>
+        </Navbar.Collapse>
+      </Container>
     </Navbar>
   );
 }

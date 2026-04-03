@@ -1,0 +1,177 @@
+/* ── MapView page ──────────────────────────────────────────────────────────── */
+.mapview {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);   /* full height minus navbar */
+  padding: 0;
+  background: var(--bg-color, #1e1e1e);
+  color: var(--text-color, #e0e0e0);
+}
+
+.mapview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--card-bg, #2a2d34);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.mapview-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.mapview-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.map-pill {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid;
+  border-radius: 99px;
+  font-size: 0.78rem;
+}
+
+.mapview-refresh { font-size: 0.78rem; opacity: 0.6; }
+.mapview-error   { font-size: 0.78rem; color: #ef4444; }
+
+/* ── Map body ──────────────────────────────────────────────────────────────── */
+.mapview-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.mapview-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Override Leaflet tile pane z-index so our UI sits on top */
+.mapview-map .leaflet-control-zoom { filter: invert(0.9); }
+
+/* ── Truck marker (custom div icon) ───────────────────────────────────────── */
+.map-truck-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.map-truck-marker:hover { transform: scale(1.08); }
+
+/* ── Truck info panel (overlay) ───────────────────────────────────────────── */
+.map-truck-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: var(--card-bg, #2a2d34);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 1rem;
+  min-width: 240px;
+  max-width: 280px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+
+.mtp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.mtp-plate {
+  font-size: 1rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.mtp-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.mtp-status.online  { color: #22c55e; }
+.mtp-status.offline { color: #6b7280; }
+
+.mtp-close {
+  background: none;
+  border: none;
+  color: var(--muted-text, #aaa);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+.mtp-close:hover { color: #fff; }
+
+.mtp-stats { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.mtp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+.mtp-row span:first-child { opacity: 0.6; }
+.mtp-row span:last-child  { font-weight: 600; }
+
+.mtp-anomaly {
+  margin-top: 0.4rem;
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mtp-route-info {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+.mtp-no-route { font-style: italic; }
+
+/* ── Legend ───────────────────────────────────────────────────────────────── */
+.map-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1.25rem;
+  background: var(--card-bg, #2a2d34);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .mapview-header { padding: 0.5rem 0.75rem; }
+  .mapview-title  { font-size: 1rem; }
+  .map-truck-panel {
+    top: auto;
+    bottom: 60px;
+    right: 8px;
+    left: 8px;
+    max-width: 100%;
+  }
+}

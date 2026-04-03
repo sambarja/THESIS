@@ -1,0 +1,61 @@
+============================================================
+  SO4 — Anomaly Detection Evaluation Report
+  Generated: 2026-04-03 13:55:18
+============================================================
+
+  Models evaluated:
+    1. Isolation Forest (IF)  — point anomaly detection
+    2. Matrix Profile   (MP)  — pattern/subsequence anomaly
+
+============================================================
+  ISOLATION FOREST RESULTS
+============================================================
+  Test samples   : 430
+  Precision      : 83.87%  (thesis target ≥ 90%)
+  Recall         : 100.00%
+  False Pos Rate : 8.33%  (thesis target ≤ 10%)
+  F1 Score       : 91.23%
+  Accuracy       : 94.19%
+
+  Confusion Matrix (IF):
+                Predicted +   Predicted -
+  Actual    +        130             0
+  Actual    -         25           275
+
+
+============================================================
+  MATRIX PROFILE RESULTS
+============================================================
+  Test series    : 4
+  Anomaly series : 3
+  Detected       : 3
+
+  [WRONG  ] normal_series         pred=ANOMALY  score=3.2255
+  [CORRECT] theft_series          pred=ANOMALY  score=2.7627
+  [WRONG  ] leak_series           pred=normal   score=0.2889
+  [CORRECT] sensor_spike          pred=ANOMALY  score=3.0595
+
+  Precision      : 66.67%
+  Recall         : 66.67%
+  False Pos Rate : 100.00%
+  F1 Score       : 66.67%
+
+  Confusion Matrix (MP):
+                Predicted +   Predicted -
+  Actual    +          2             1
+  Actual    -          1             0
+
+
+============================================================
+  PER-SCENARIO BREAKDOWN (Isolation Forest)
+============================================================
+  fuel_leak             n= 50  anomalies=50  caught=50  FP=0
+  fuel_theft            n= 50  anomalies=50  caught=50  FP=0
+  normal_driving        n=200  anomalies=0  caught=0  FP=4
+  parked                n= 50  anomalies=0  caught=0  FP=7
+  refuel                n= 50  anomalies=0  caught=0  FP=14
+  sensor_error          n= 30  anomalies=30  caught=30  FP=0
+
+============================================================
+  END OF REPORT
+============================================================

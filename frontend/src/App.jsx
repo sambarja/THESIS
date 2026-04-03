@@ -1,80 +1,42 @@
-// App.js
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
-import { CTable } from '@coreui/react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
 
-import './App.css';
+import Layout       from './components/Layout';
+import LoginSignUp  from './components/LoginSignUp';
+import Dashboard    from './components/Dashboard';
+import MapView      from './components/MapView';
+import Trucks       from './components/Trucks';
+import Alerts       from './components/Alerts';
+import Logs         from './components/Logs';
+import Analytics    from './components/Analytics';
+import Settings     from './components/Settings';
 
-import LoginSignUp from './components/LoginSignUp';
-import MyNavbar from "./components/MyNavbar";
-import Dashboard from "./components/Dashboard";
-import Alerts from "./components/Alerts";
-import Logs from "./components/Logs";
-import Settings from "./components/Settings";
+function ProtectedLayout({ isLoggedIn, setIsLoggedIn }) {
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  return <Layout setIsLoggedIn={setIsLoggedIn} />;
+}
 
-// Dummy credentials
-const DUMMY_USER = {
-  email: "user",
-  password: "1234"
-};
-
-// Protected Route Component
-const ProtectedRoute = ({ isLoggedIn, children }) => {
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-};
-
-function App() {
+export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   return (
     <Router>
-      {isLoggedIn && <MyNavbar />}
       <Routes>
-        <Route
-          path="/login"
-          element={<LoginSignUp setIsLoggedIn={setIsLoggedIn} />}
-        />
+        <Route path="/login" element={<LoginSignUp setIsLoggedIn={setIsLoggedIn} />} />
 
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/alerts"
-          element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Alerts />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/logs"
-          element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Logs />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute isLoggedIn={isLoggedIn}>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        {/* Catch-all redirect to login */}
+        <Route element={<ProtectedLayout isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/map"       element={<MapView />} />
+          <Route path="/trucks"    element={<Trucks />} />
+          <Route path="/alerts"    element={<Alerts />} />
+          <Route path="/logs"      element={<Logs />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/settings"  element={<Settings />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );
 }
-
-export default App;
