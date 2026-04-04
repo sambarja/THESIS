@@ -47,7 +47,8 @@ VEHICLE_ID   = cfg.get('vehicle_id',   'YOUR_VEHICLE_ID')
 POLL_INTERVAL = cfg.get('poll_s',      30)    # seconds between backend polls
 
 # ── GPIO pin setup ─────────────────────────────────────────────────────────────
-btn_pin    = Pin(14, Pin.IN,  Pin.PULL_DOWN)
+btn_pin    = Pin(14, Pin.IN,  Pin.PULL_DOWN)   # Start/Stop tracking
+rest_btn   = Pin(13, Pin.IN,  Pin.PULL_DOWN)   # REST / Pause button
 buzzer_pwm = PWM(Pin(15), freq=2000, duty=0)
 led_green  = Pin(16, Pin.OUT)
 led_amber  = Pin(17, Pin.OUT)
@@ -65,6 +66,8 @@ except:
 
 # ── State ──────────────────────────────────────────────────────────────────────
 tracking_active = False
+trip_paused     = False     # True when driver has pressed REST
+current_trip_id = None      # Set when a trip is active
 last_status     = {}
 
 # ── LED helpers ────────────────────────────────────────────────────────────────
@@ -159,6 +162,12 @@ def apply_alerts(status):
         '',
     ]
 
+    if trip_paused:
+        set_leds(amber=True)
+        buzzer_off()
+        oled_show(['RESTING', 'Trip Paused', '', f"FUEL:{status.get('fuel_level','?')}%", 'Press REST', 'to resume'])
+        return
+
     if rest_needed or maint_due:
         # CRITICAL alert
         set_leds(red=True)
@@ -186,19 +195,76 @@ def apply_alerts(status):
         lines[4] = 'ALL NORMAL'
         oled_show(lines)
 
+# ── Backend trip control ────────────────────────────────────────────────────────
+def call_trip_pause():
+    if not current_trip_id:
+        return False
+    try:
+        r = urequests.post(f"{BACKEND_URL}/trip/pause",
+                           data=json.dumps({'trip_id': current_trip_id}),
+                           headers={'Content-Type': 'application/json'}, timeout=5)
+        ok = r.status_code in (200, 201)
+        r.close()
+        return ok
+    except Exception as e:
+        print(f"[HMI] Pause error: {e}")
+        return False
+
+def call_trip_resume():
+    if not current_trip_id:
+        return False
+    try:
+        r = urequests.post(f"{BACKEND_URL}/trip/resume",
+                           data=json.dumps({'trip_id': current_trip_id}),
+                           headers={'Content-Type': 'application/json'}, timeout=5)
+        ok = r.status_code in (200, 201)
+        r.close()
+        return ok
+    except Exception as e:
+        print(f"[HMI] Resume error: {e}")
+        return False
+
+# ── REST/PAUSE button handler ──────────────────────────────────────────────────
+def check_rest_button():
+    global trip_paused
+    if not tracking_active:
+        return
+    if rest_btn.value():
+        time.sleep_ms(50)   # debounce
+        if rest_btn.value():
+            if not trip_paused:
+                # Pause / start resting
+                if call_trip_pause():
+                    trip_paused = True
+                    print("[HMI] Trip PAUSED — driver resting")
+                    set_leds(amber=True)
+                    buzzer_beep(freq=1000, duration_ms=200, count=2)
+                    oled_show(['RESTING', 'Trip Paused', '', 'Press REST', 'btn to resume', ''])
+            else:
+                # Resume driving
+                if call_trip_resume():
+                    trip_paused = False
+                    print("[HMI] Trip RESUMED")
+                    set_leds(green=True)
+                    buzzer_beep(freq=1500, duration_ms=100, count=2)
+                    oled_show(['RESUMED', 'Trip Active', '', VEHICLE_ID, '', ''])
+            time.sleep_ms(600)   # hold-off
+
 # ── Button handler (start/stop tracking) ──────────────────────────────────────
 def check_button():
-    global tracking_active
+    global tracking_active, trip_paused
     if btn_pin.value():
         time.sleep_ms(50)   # debounce
         if btn_pin.value():
             tracking_active = not tracking_active
             if tracking_active:
+                trip_paused = False
                 print("[HMI] Tracking STARTED")
                 buzzer_beep(freq=1500, duration_ms=100, count=2)
                 set_leds(green=True)
                 oled_show(['TRACKING', 'STARTED', '', VEHICLE_ID, '', ''])
             else:
+                trip_paused = False
                 print("[HMI] Tracking STOPPED")
                 buzzer_beep(freq=800, duration_ms=300, count=1)
                 all_leds_off()
@@ -222,9 +288,10 @@ def main():
 
     while True:
         check_button()
+        check_rest_button()
 
         now = time.time()
-        if tracking_active and (now - last_poll) >= POLL_INTERVAL:
+        if tracking_active and not trip_paused and (now - last_poll) >= POLL_INTERVAL:
             print("[HMI] Polling backend…")
             status    = poll_backend()
             last_poll = now

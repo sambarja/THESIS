@@ -1,0 +1,22 @@
+id,truck_code,plate_number,model,status
+11111111-0000-0000-0000-000000000001,TRK-001,ABC-1234,Isuzu Elf NHR 2020,active
+11111111-0000-0000-0000-000000000002,TRK-002,DEF-5678,Mitsubishi Fuso 2019,idle
+11111111-0000-0000-0000-000000000003,TRK-003,GHI-9012,Hino 300 Series 2021,maintenance
+11111111-0000-0000-0000-000000000004,TRK-004,JKL-3456,Isuzu NLR 2022,low_fuel
+217797e1-bf7a-540f-ac1b-c0acf4e48920,PUB-GL-001,GLF-1001,GeoLife Route Demo Truck (Taxi-derived),active
+15397c93-5a79-5d40-8353-7fd856ef45b5,PUB-GL-002,GLF-1002,GeoLife Route Demo Truck (Bus-derived),active
+4589a912-7a8d-55e1-aff4-eb68a04f8701,PUB-GL-003,GLF-1003,GeoLife Route Demo Truck (Car-derived),active
+72869a99-6df3-50f4-a7e2-da7e71d46e4b,PUB-GL-004,GLF-1004,GeoLife Route Demo Truck (Car-derived),active
+bdd03877-a14a-57ce-8343-eef5d8916ab7,PUB-GL-005,GLF-1005,GeoLife Route Demo Truck (Taxi-derived),active
+492f3c98-1003-52da-bac5-a19f8069f2db,PUB-GL-006,GLF-1006,GeoLife Route Demo Truck (Bus-derived),active
+8a464ff4-dcb7-5dc5-bcb1-c395d418e4b7,PUB-GL-007,GLF-1007,GeoLife Route Demo Truck (Car-derived),active
+0355c38f-6474-5285-9295-75a7d97de1cf,PUB-GL-008,GLF-1008,GeoLife Route Demo Truck (Taxi-derived),active
+5401f086-e404-5a60-960b-8d4173d6252e,PUB-GL-009,GLF-1009,GeoLife Route Demo Truck (Bus-derived),active
+391c6fb8-80cf-5b57-81e6-5b7f488a51fd,PUB-GL-010,GLF-1010,GeoLife Route Demo Truck (Bus-derived),active
+dca7efd9-46fa-5011-b2fc-e95055f7db60,PUB-GL-011,GLF-1011,GeoLife Route Demo Truck (Car-derived),active
+1fefaede-bcbb-5820-8c23-478d35d31bae,PUB-GL-012,GLF-1012,GeoLife Route Demo Truck (Car-derived),active
+60eb2403-f978-5c92-944e-66122563119c,PUB-GL-013,GLF-1013,GeoLife Route Demo Truck (Bus-derived),active
+f2b4119c-68a4-5ce6-9917-2047ad482460,PUB-GL-014,GLF-1014,GeoLife Route Demo Truck (Car-derived),active
+fdadee0d-21b3-5563-bcdf-b327a9d248ea,PUB-GL-015,GLF-1015,GeoLife Route Demo Truck (Car-derived),active
+6e5a9f00-7459-56f0-8c79-cac6b2080f25,PUB-GL-016,GLF-1016,GeoLife Route Demo Truck (Car-derived),active
+fee8bb21-6194-5e60-a295-875105e00dd3,PUB-GL-017,GLF-1017,GeoLife Route Demo Truck (Taxi-derived),active

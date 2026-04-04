@@ -1,163 +1,252 @@
-import { TrendingUp, Activity, Fuel, AlertTriangle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Activity, AlertTriangle, Fuel, RefreshCw, Route, Clock3 } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { mockTrucks, mockAlerts, mockTelemetryLogs } from '../data/mockData';
+import { normalizeTruck, normalizeTripSummary } from '../utils/api';
+import { useApi } from '../hooks/useApi';
 
-const COLORS = ['#22c55e', '#eab308', '#ef4444', '#f97316', '#f59e0b', '#ec4899', '#475569'];
+const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
+const tooltipStyle = {
+  contentStyle: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' },
+};
 
-const fuelTrendData = [
-  { time: '06:00', avgFuel: 92 },
-  { time: '07:00', avgFuel: 88 },
-  { time: '08:00', avgFuel: 84 },
-  { time: '09:00', avgFuel: 78 },
-  { time: '10:00', avgFuel: 72 },
-  { time: '11:00', avgFuel: 66 },
-  { time: '12:00', avgFuel: 60 },
-];
+function buildSummaryPath(days, truckId) {
+  const params = new URLSearchParams({ days: String(days), limit: '200' });
+  if (truckId && truckId !== 'all') params.set('truck_id', truckId);
+  return `/trips/summaries?${params.toString()}`;
+}
 
-const distanceData = [
-  { truck: 'TRK-001', distance: 145.8 },
-  { truck: 'TRK-002', distance: 203.4 },
-  { truck: 'TRK-003', distance: 289.7 },
-  { truck: 'TRK-004', distance: 412.3 },
-  { truck: 'TRK-005', distance: 156.2 },
-  { truck: 'TRK-007', distance: 98.5 },
-];
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function safeNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
 
 export default function Analytics() {
-  const totalDistance      = mockTrucks.reduce((s, t) => s + t.distance, 0);
-  const avgFuel            = Math.round(mockTrucks.reduce((s, t) => s + t.fuel, 0) / mockTrucks.length);
-  const totalOpHours       = mockTrucks.reduce((s, t) => s + t.operatingHours, 0);
-  const activeTrips        = mockTrucks.filter(t => t.tripStatus === 'active');
-  const avgSpeed           = activeTrips.length
-    ? Math.round(activeTrips.reduce((s, t) => s + t.speed, 0) / activeTrips.length)
-    : 0;
-  const utilization        = Math.round((activeTrips.length / mockTrucks.length) * 100);
-  const activeAlerts       = mockAlerts.filter(a => !a.resolved).length;
+  const [days, setDays] = useState(30);
+  const [truckId, setTruckId] = useState('all');
 
-  const alertTypeData = [
-    { name: 'Anomaly',     value: mockAlerts.filter(a => a.type === 'anomaly').length },
-    { name: 'Rest Alert',  value: mockAlerts.filter(a => a.type === 'rest').length },
-    { name: 'Maintenance', value: mockAlerts.filter(a => a.type === 'maintenance').length },
-    { name: 'Low Fuel',    value: mockAlerts.filter(a => a.type === 'low_fuel').length },
+  const summariesApi = useApi(buildSummaryPath(days, truckId), {
+    transform: payload => {
+      const safePayload = payload && typeof payload === 'object' ? payload : {};
+      return {
+        items: ensureArray(safePayload.items).map(normalizeTripSummary),
+        totals: safePayload.totals && typeof safePayload.totals === 'object' ? safePayload.totals : {},
+        count: safeNumber(safePayload.count),
+      };
+    },
+    pollInterval: 30_000,
+  });
+
+  const fleetApi = useApi('/fleet/status', {
+    transform: rows => ensureArray(rows).map(normalizeTruck),
+    pollInterval: 15_000,
+  });
+
+  const loading = summariesApi.loading || fleetApi.loading;
+  const summaries = ensureArray(summariesApi.data?.items);
+  const totals = summariesApi.data?.totals && typeof summariesApi.data.totals === 'object'
+    ? summariesApi.data.totals
+    : {};
+  const fleet = ensureArray(fleetApi.data);
+  const activeTrips = fleet.filter(truck => truck.tripStatus === 'active').length;
+  const avgFuelValue = totals.average_fuel_level;
+  const avgFuel = avgFuelValue != null && Number.isFinite(Number(avgFuelValue))
+    ? `${Math.round(Number(avgFuelValue))}%`
+    : '--';
+
+  const truckOptions = useMemo(() => (
+    [...fleet]
+      .sort((left, right) => String(left.code ?? '').localeCompare(String(right.code ?? '')))
+      .map(truck => ({ id: truck.id, label: truck.code ?? 'Unknown Truck' }))
+  ), [fleet]);
+
+  const distanceByTruck = useMemo(() => {
+    const grouped = {};
+    for (const summary of summaries) {
+      const truckCode = summary.truckCode || 'Unknown Truck';
+      grouped[truckCode] = (grouped[truckCode] ?? 0) + safeNumber(summary.totalDistanceKm);
+    }
+    return Object.entries(grouped).map(([truck, distance]) => ({ truck, distance: +distance.toFixed(1) }));
+  }, [summaries]);
+
+  const issueByTruck = useMemo(() => {
+    const grouped = {};
+    for (const summary of summaries) {
+      const truckCode = summary.truckCode || 'Unknown Truck';
+      if (!grouped[truckCode]) grouped[truckCode] = { truck: truckCode, alerts: 0, anomalies: 0 };
+      grouped[truckCode].alerts += safeNumber(summary.totalAlerts);
+      grouped[truckCode].anomalies += safeNumber(summary.totalAnomalies);
+    }
+    return Object.values(grouped);
+  }, [summaries]);
+
+  const statusDistribution = useMemo(() => {
+    const grouped = {};
+    for (const truck of fleet) {
+      const status = truck.status || 'unknown';
+      grouped[status] = (grouped[status] ?? 0) + 1;
+    }
+    return Object.entries(grouped)
+      .map(([name, value]) => ({ name: name.replace('_', ' '), value }))
+      .filter(item => item.value > 0);
+  }, [fleet]);
+
+  const summaryCards = [
+    { icon: Route, color: 'from-blue-500 to-blue-600', value: loading ? '--' : `${safeNumber(totals.total_distance_km)} km`, label: `Total Distance (${days}d)` },
+    { icon: Clock3, color: 'from-emerald-500 to-emerald-600', value: loading ? '--' : `${safeNumber(totals.total_operating_hours)} h`, label: 'Operating Hours' },
+    { icon: Activity, color: 'from-indigo-500 to-indigo-600', value: loading ? '--' : activeTrips, label: 'Active Trips Now' },
+    { icon: AlertTriangle, color: 'from-red-500 to-red-600', value: loading ? '--' : safeNumber(totals.total_anomalies), label: 'Total Anomalies' },
+    { icon: Fuel, color: 'from-amber-500 to-amber-600', value: loading ? '--' : avgFuel, label: 'Average Fuel' },
   ];
 
-  const statusData = [
-    { name: 'Active',      value: mockTrucks.filter(t => t.status === 'active').length },
-    { name: 'Idle',        value: mockTrucks.filter(t => t.status === 'idle').length },
-    { name: 'Anomaly',     value: mockTrucks.filter(t => t.status === 'anomaly').length },
-    { name: 'Maintenance', value: mockTrucks.filter(t => t.status === 'maintenance').length },
-    { name: 'Rest Alert',  value: mockTrucks.filter(t => t.status === 'rest_alert').length },
-    { name: 'Low Fuel',    value: mockTrucks.filter(t => t.status === 'low_fuel').length },
-    { name: 'Offline',     value: mockTrucks.filter(t => t.status === 'offline').length },
-  ];
+  const showAnalyticsEmptyState = !loading && summaries.length === 0;
 
-  const tooltipStyle = {
-    contentStyle: { backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' },
+  const handleRefresh = () => {
+    summariesApi.refetch?.();
+    fleetApi.refetch?.();
   };
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Analytics & Monitoring</h1>
-        <p className="text-sm text-slate-500">Fleet performance insights and metrics</p>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {[
-          { icon: TrendingUp,   color: 'from-blue-500 to-blue-600',   shade: 'blue-100',   value: `${totalDistance.toFixed(1)} km`,  label: 'Total Distance Today' },
-          { icon: Activity,     color: 'from-green-500 to-green-600', shade: 'green-100',  value: activeTrips.length,                label: 'Active Trips' },
-          { icon: Fuel,         color: 'from-orange-500 to-orange-600',shade:'orange-100', value: `${avgFuel}%`,                     label: 'Average Fuel Level' },
-          { icon: AlertTriangle,color: 'from-purple-500 to-purple-600',shade:'purple-100', value: activeAlerts,                      label: 'Active Alerts' },
-        ].map(({ icon: Icon, color, value, label }) => (
-          <div key={label} className={`bg-gradient-to-br ${color} rounded-xl p-4 sm:p-5 text-white`}>
-            <Icon className="w-6 h-6 opacity-80 mb-3" />
-            <p className="text-2xl sm:text-3xl font-bold mb-1">{value}</p>
-            <p className="text-xs opacity-90">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Charts row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Fuel Level Trend</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={fuelTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="time" stroke="#94a3b8" style={{ fontSize: '11px' }} />
-              <YAxis stroke="#94a3b8" style={{ fontSize: '11px' }} />
-              <Tooltip {...tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Line type="monotone" dataKey="avgFuel" stroke="#3b82f6" strokeWidth={2.5}
-                name="Avg Fuel (%)" dot={{ fill: '#3b82f6', r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Analytics</h1>
+          <p className="text-sm text-slate-500">Aggregated fleet metrics and trend charts. For per-trip records, see the Trips tab.</p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={truckId}
+            onChange={event => setTruckId(event.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Trucks</option>
+            {truckOptions.map(option => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+          <select
+            value={days}
+            onChange={event => setDays(Number(event.target.value))}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+            <option value={365}>Last 12 months</option>
+          </select>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
 
+      {summariesApi.error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {summariesApi.error}
+        </div>
+      )}
+
+      {showAnalyticsEmptyState && (
+        <div className="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+          No analytics data yet because no trips have ended. Trip summaries will appear here after completed trips are recorded.
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        {summaryCards.map(card => {
+          const Icon = card.icon;
+          return (
+            <div key={card.label} className={`bg-gradient-to-br ${card.color} rounded-xl p-4 sm:p-5 text-white`}>
+              <Icon className="w-6 h-6 opacity-80 mb-3" />
+              <p className="text-2xl sm:text-3xl font-bold mb-1">{card.value}</p>
+              <p className="text-xs opacity-90">{card.label}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
           <h3 className="text-base font-semibold text-slate-900 mb-4">Distance by Truck</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={distanceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="truck" stroke="#94a3b8" style={{ fontSize: '11px' }} />
-              <YAxis stroke="#94a3b8" style={{ fontSize: '11px' }} />
-              <Tooltip {...tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="distance" fill="#22c55e" name="Distance (km)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Charts row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Alert Type Distribution</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={alertTypeData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                labelLine={false} style={{ fontSize: '11px' }}>
-                {alertTypeData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
-            </PieChart>
-          </ResponsiveContainer>
+          {distanceByTruck.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+              {loading ? 'Loading...' : 'No trip summaries available yet.'}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={distanceByTruck}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="truck" stroke="#94a3b8" style={{ fontSize: '11px' }} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '11px' }} />
+                <Tooltip {...tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="distance" fill="#22c55e" name="Distance (km)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-900 mb-4">Fleet Status Distribution</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={statusData.filter(d => d.value > 0)} cx="50%" cy="50%" outerRadius={75} dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                labelLine={false} style={{ fontSize: '11px' }}>
-                {statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <h3 className="text-base font-semibold text-slate-900 mb-4">Alerts vs Anomalies by Truck</h3>
+          {issueByTruck.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+              {loading ? 'Loading...' : 'No trip summaries available yet.'}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={issueByTruck}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="truck" stroke="#94a3b8" style={{ fontSize: '11px' }} />
+                <YAxis stroke="#94a3b8" style={{ fontSize: '11px' }} />
+                <Tooltip {...tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="alerts" fill="#3b82f6" name="Alerts" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="anomalies" fill="#ef4444" name="Anomalies" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        {[
-          { label: 'Total Operating Hours', value: `${totalOpHours.toFixed(1)} h`, sub: 'Across all active trucks' },
-          { label: 'Average Speed',         value: `${avgSpeed} km/h`,             sub: 'Active trips only' },
-          { label: 'Fleet Utilization',     value: `${utilization}%`,              sub: 'Trucks currently active' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
-            <p className="text-xs text-slate-500 mb-2">{s.label}</p>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">{s.value}</p>
-            <p className="text-xs text-slate-400">{s.sub}</p>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 mb-6">
+        <h3 className="text-base font-semibold text-slate-900 mb-4">Live Fleet Status Distribution</h3>
+        {statusDistribution.length === 0 ? (
+          <div className="h-56 flex items-center justify-center text-slate-400 text-sm">
+            {loading ? 'Loading...' : 'No fleet data available.'}
           </div>
-        ))}
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={statusDistribution}
+                cx="50%"
+                cy="50%"
+                outerRadius={75}
+                dataKey="value"
+                label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
+                labelLine={false}
+                style={{ fontSize: '11px' }}
+              >
+                {statusDistribution.map((item, index) => <Cell key={`${item.name}-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
       </div>
+
     </div>
   );
 }

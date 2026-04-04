@@ -1,37 +1,42 @@
 import { useState } from 'react';
-import { Truck, AlertTriangle, Fuel, Wrench, Activity, Clock } from 'lucide-react';
-import { mockTrucks, mockAlerts, adminLocation } from '../data/mockData';
+import { Truck, AlertTriangle, Fuel, Wrench, Activity, Clock, RefreshCw } from 'lucide-react';
+import { normalizeAlert } from '../utils/api';
+import { useApi } from '../hooks/useApi';
+import { useLiveFleet } from '../hooks/useLiveFleet';
 import { getStatusColor, getStatusLabel } from '../utils/statusColors';
 import FleetMap from './FleetMap';
 import TruckDetailModal from './TruckDetailModal';
 
 const buildStatCards = (trucks) => [
-  { label: 'Total Fleet',     value: trucks.length,                                         icon: Truck,         textColor: 'text-blue-600',   bgColor: 'bg-blue-50' },
-  { label: 'Active Trips',    value: trucks.filter(t => t.tripStatus === 'active').length,  icon: Activity,      textColor: 'text-green-600',  bgColor: 'bg-green-50' },
-  { label: 'Anomalies',       value: trucks.filter(t => t.status === 'anomaly').length,     icon: AlertTriangle, textColor: 'text-red-600',    bgColor: 'bg-red-50' },
-  { label: 'Rest Alerts',     value: trucks.filter(t => t.status === 'rest_alert').length,  icon: Clock,         textColor: 'text-amber-600',  bgColor: 'bg-amber-50' },
-  { label: 'Maintenance Due', value: trucks.filter(t => t.status === 'maintenance').length, icon: Wrench,        textColor: 'text-orange-600', bgColor: 'bg-orange-50' },
-  { label: 'Low Fuel',        value: trucks.filter(t => t.status === 'low_fuel').length,    icon: Fuel,          textColor: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+  { label: 'Total Fleet',     value: trucks.length,                                          icon: Truck,         textColor: 'text-blue-600',   bgColor: 'bg-blue-50' },
+  { label: 'Active Trips',    value: trucks.filter(t => t.tripStatus === 'active').length,   icon: Activity,      textColor: 'text-green-600',  bgColor: 'bg-green-50' },
+  { label: 'Anomalies',       value: trucks.filter(t => t.status === 'anomaly').length,      icon: AlertTriangle, textColor: 'text-red-600',    bgColor: 'bg-red-50' },
+  { label: 'Rest Alerts',     value: trucks.filter(t => t.status === 'rest_alert').length,   icon: Clock,         textColor: 'text-amber-600',  bgColor: 'bg-amber-50' },
+  { label: 'Maintenance Due', value: trucks.filter(t => t.status === 'maintenance').length,  icon: Wrench,        textColor: 'text-orange-600', bgColor: 'bg-orange-50' },
+  { label: 'Low Fuel',        value: trucks.filter(t => t.status === 'low_fuel').length,     icon: Fuel,          textColor: 'text-yellow-600', bgColor: 'bg-yellow-50' },
 ];
 
 export default function Dashboard() {
   const [selectedTruckId, setSelectedTruckId] = useState(null);
-  const selectedTruck = mockTrucks.find(t => t.id === selectedTruckId);
-  const cards        = buildStatCards(mockTrucks);
-  const activeAlerts = mockAlerts.filter(a => !a.resolved);
+
+  const { trucks: rawTrucks, loading: trucksLoading, error: trucksError, refetch: refetchTrucks } =
+    useLiveFleet();
+
+  const { data: rawAlerts, loading: alertsLoading, refetch: refetchAlerts } =
+    useApi('/alerts?resolved=false&limit=5', {
+      transform: arr => arr.map(normalizeAlert),
+      pollInterval: 30_000,
+    });
+
+  const trucks       = rawTrucks;
+  const recentAlerts = rawAlerts  ?? [];
+  const selectedTruck = trucks.find(t => t.id === selectedTruckId);
+  const cards         = buildStatCards(trucks);
+  const loading       = trucksLoading || alertsLoading;
+
+  const handleRefresh = () => { refetchTrucks(); refetchAlerts(); };
 
   return (
-    /*
-     * Layout strategy:
-     *  - Mobile / tablet  : single column, map has a fixed responsive height
-     *  - Desktop (lg+)    : two columns, left flex-1 / right fixed-width panel,
-     *                        both scroll independently via overflow-y-auto
-     *
-     * We deliberately avoid "h-full" here because the parent <main> is
-     * overflow-auto and children cannot reliably get 100% of its scroll height.
-     * Instead we give the map explicit heights per breakpoint and let the
-     * right panel scroll on its own on desktop.
-     */
     <div className="flex flex-col lg:flex-row gap-4 p-3 sm:p-4 lg:p-6">
 
       {/* ── LEFT COLUMN ── stat cards + map ─────────────────────────────── */}
@@ -48,32 +53,51 @@ export default function Dashboard() {
                 <div className={`p-2 rounded-lg ${card.bgColor}`}>
                   <card.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${card.textColor}`} />
                 </div>
-                <span className={`text-xl sm:text-2xl font-bold ${card.textColor}`}>{card.value}</span>
+                <span className={`text-xl sm:text-2xl font-bold ${card.textColor}`}>
+                  {trucksLoading ? '—' : card.value}
+                </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 truncate">{card.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Map card — explicit height per breakpoint so Leaflet is always happy */}
+        {/* Error banner */}
+        {trucksError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {trucksError}
+          </div>
+        )}
+
+        {/* Map card */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex flex-col
                         h-[380px] sm:h-[460px] md:h-[520px] lg:h-[calc(100vh-280px)]">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900">Live Fleet Map</h3>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span>Live Tracking</span>
+            <div className="flex items-center gap-3">
+              <button onClick={handleRefresh} disabled={loading}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50">
+                <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span>Live Tracking</span>
+              </div>
             </div>
           </div>
-          {/* Map takes all remaining space inside the card */}
           <div className="flex-1 rounded-lg overflow-hidden">
-            <FleetMap
-              trucks={mockTrucks}
-              selectedTruckId={selectedTruckId}
-              onTruckSelect={setSelectedTruckId}
-              showAdminLocation
-              adminLocation={adminLocation}
-            />
+            {trucks.length === 0 && !trucksLoading ? (
+              <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-400">No trucks with GPS data</p>
+              </div>
+            ) : (
+              <FleetMap
+                trucks={trucks}
+                selectedTruckId={selectedTruckId}
+                onTruckSelect={setSelectedTruckId}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -85,10 +109,14 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm sm:text-base font-semibold text-slate-900">Recent Alerts</h3>
-            <span className="text-xs text-slate-500">{activeAlerts.length} Active</span>
+            <span className="text-xs text-slate-500">{recentAlerts.length} Active</span>
           </div>
           <div className="space-y-2 max-h-36 overflow-y-auto">
-            {mockAlerts.slice(0, 4).map(alert => (
+            {recentAlerts.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">
+                {alertsLoading ? 'Loading…' : 'No active alerts'}
+              </p>
+            ) : recentAlerts.map(alert => (
               <div key={alert.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg">
                 <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
                   alert.severity === 'high'   ? 'text-red-500'    :
@@ -103,14 +131,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Fleet Status list — on desktop it stretches and scrolls internally */}
+        {/* Fleet Status list */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex flex-col
                         max-h-[420px] lg:max-h-[calc(100vh-340px)]">
           <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-3 flex-shrink-0">
             Fleet Status
           </h3>
           <div className="flex-1 overflow-y-auto space-y-2">
-            {mockTrucks.map(truck => (
+            {trucksLoading ? (
+              <p className="text-xs text-slate-400 text-center py-8">Loading fleet…</p>
+            ) : trucks.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8">No trucks in fleet</p>
+            ) : trucks.map(truck => (
               <button
                 key={truck.id}
                 onClick={() => setSelectedTruckId(truck.id)}
@@ -125,7 +157,7 @@ export default function Dashboard() {
                     <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getStatusColor(truck.status)}`} />
                     <span className="text-sm font-medium text-slate-900 truncate">{truck.name}</span>
                   </div>
-                  <span className="text-xs text-slate-400 ml-2 flex-shrink-0">{truck.id}</span>
+                  <span className="text-xs text-slate-400 ml-2 flex-shrink-0">{truck.code}</span>
                 </div>
                 <p className="text-xs text-slate-500 mb-1.5 truncate">{truck.driver}</p>
                 <div className="flex items-center justify-between text-xs">

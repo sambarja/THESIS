@@ -150,10 +150,18 @@ export default function FleetMap({
           // Fragment keeps react-leaflet happy — no plain DOM wrapper around map layers
           <React.Fragment key={truck.id}>
             {truck.route && truck.route.length > 1 && (
-              <Polyline
-                positions={truck.route}
-                pathOptions={{ color, weight: 3, opacity: 0.65, dashArray: '6 10' }}
-              />
+              <>
+                {/* Faint halo for contrast on light tiles */}
+                <Polyline
+                  positions={truck.route}
+                  pathOptions={{ color: '#ffffff', weight: 7, opacity: 0.55 }}
+                />
+                {/* Main route line */}
+                <Polyline
+                  positions={truck.route}
+                  pathOptions={{ color, weight: 4, opacity: 0.9 }}
+                />
+              </>
             )}
             <Marker
               position={truck.position}

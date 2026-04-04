@@ -1,0 +1,101 @@
+{
+  "Isolation Forest": {
+    "confusion_matrix": {
+      "TN": 16392,
+      "FP": 3991,
+      "FN": 0,
+      "TP": 29
+    },
+    "metrics": {
+      "model": "Isolation Forest",
+      "granularity": "row",
+      "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+      "TP": 29,
+      "FP": 3991,
+      "FN": 0,
+      "TN": 16392,
+      "precision": 0.007213930348258706,
+      "recall": 1.0,
+      "false_positive_rate": 0.19580042192022765,
+      "accuracy": 0.8044777581814618,
+      "positive_label_count": 29,
+      "negative_label_count": 20383,
+      "roc_auc": 0.8051960135812974,
+      "pr_auc": 0.0034791835148942113,
+      "average_detection_latency_sec": 0.0,
+      "median_detection_latency_sec": 0.0,
+      "detected_anomalous_trips": 6,
+      "missed_anomalous_trips": 0,
+      "latency_target_sec": 10.0,
+      "latency_target_met": true
+    },
+    "curve_artifacts": {
+      "roc_csv": "C:\\thesis_final\\THESIS\\ml\\reports\\curve_data\\iforest_roc_curve.csv",
+      "pr_csv": "C:\\thesis_final\\THESIS\\ml\\reports\\curve_data\\iforest_pr_curve.csv",
+      "roc_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\iforest_roc_curve.png",
+      "pr_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\iforest_pr_curve.png"
+    },
+    "confusion_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\iforest_confusion_matrix.png"
+  },
+  "Matrix Profile": {
+    "confusion_matrix": {
+      "TN": 20,
+      "FP": 53,
+      "FN": 1,
+      "TP": 5
+    },
+    "metrics": {
+      "model": "Matrix Profile",
+      "granularity": "trip_subsequence",
+      "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+      "TP": 5,
+      "FP": 53,
+      "FN": 1,
+      "TN": 20,
+      "precision": 0.08620689655172414,
+      "recall": 0.8333333333333334,
+      "false_positive_rate": 0.726027397260274,
+      "accuracy": 0.31645569620253167,
+      "positive_label_count": 6,
+      "negative_label_count": 73,
+      "roc_auc": 0.3162100456621005,
+      "pr_auc": 0.052505893926417475,
+      "average_detection_latency_sec": 9.803526,
+      "median_detection_latency_sec": 0.0,
+      "detected_anomalous_trips": 5,
+      "missed_anomalous_trips": 1,
+      "latency_target_sec": 10.0,
+      "latency_target_met": true
+    },
+    "curve_artifacts": {
+      "roc_csv": "C:\\thesis_final\\THESIS\\ml\\reports\\curve_data\\matrix_profile_roc_curve.csv",
+      "pr_csv": "C:\\thesis_final\\THESIS\\ml\\reports\\curve_data\\matrix_profile_pr_curve.csv",
+      "roc_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\matrix_profile_roc_curve.png",
+      "pr_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\matrix_profile_pr_curve.png"
+    },
+    "confusion_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\matrix_profile_confusion_matrix.png"
+  },
+  "objective_summary": {
+    "precision_target": 0.9,
+    "false_positive_rate_target": 0.1,
+    "latency_target_sec": 10.0,
+    "isolation_forest_meets_precision_target": false,
+    "isolation_forest_meets_fpr_target": false,
+    "isolation_forest_meets_latency_target": true,
+    "matrix_profile_meets_precision_target": false,
+    "matrix_profile_meets_fpr_target": false,
+    "matrix_profile_meets_latency_target": true,
+    "project_native_benchmark": {
+      "isolation_forest_precision": 0.8787878787878788,
+      "isolation_forest_fpr": 0.006611570247933884,
+      "isolation_forest_latency_sec": 0.0,
+      "matrix_profile_precision": 1.0,
+      "matrix_profile_fpr": 0.0,
+      "matrix_profile_latency_sec": 9.803526
+    },
+    "public_clean_false_alarm_characterization": {
+      "isolation_forest_fpr": 0.2015876226109819,
+      "matrix_profile_fpr": 0.7910447761194029
+    }
+  }
+}

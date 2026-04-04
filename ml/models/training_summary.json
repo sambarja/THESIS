@@ -1,0 +1,42 @@
+{
+  "training_rows": 163,
+  "validation_rows": 228,
+  "training_trip_count": 7,
+  "training_trip_source_counts": {
+    "project_native": 7
+  },
+  "validation_trip_source_counts": {
+    "project_native": 2
+  },
+  "iforest_training_policy": "project_native_clean_anchor_only",
+  "iforest_secondary_calibration_trip_source_counts": {
+    "public_route": 53
+  },
+  "matrix_profile_training_policy": "project_native_clean_anchor_only",
+  "feature_columns": [
+    "fuel_level_filtered",
+    "speed_filtered",
+    "fuel_delta",
+    "odometer_delta",
+    "fuel_per_km",
+    "fuel_rate_per_hour",
+    "distance_per_fuel",
+    "route_segment_performance",
+    "driver_behavior_score"
+  ],
+  "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\cleaned_telemetry.csv",
+  "iforest_model": "C:\\thesis_final\\THESIS\\ml\\models\\iforest.pkl",
+  "matrix_profile_model": "C:\\thesis_final\\THESIS\\ml\\models\\matrix_profile.json",
+  "iforest_threshold": 0.018714695040499996,
+  "iforest_threshold_source": "project_native_anchor_plus_secondary_clean_validation",
+  "iforest_threshold_quantile": 0.99,
+  "iforest_context_threshold_count": 3,
+  "iforest_threshold_context_column": "source_threshold_key",
+  "matrix_profile_signal_column": "fuel_level_filtered",
+  "matrix_profile_window_size": 5,
+  "matrix_profile_localization_window_size": 4,
+  "matrix_profile_threshold_z": 4.9124130087461575,
+  "matrix_profile_localization_threshold_z": 4.497850430924094,
+  "matrix_profile_context_threshold_count": 1,
+  "matrix_profile_localization_context_threshold_count": 1
+}

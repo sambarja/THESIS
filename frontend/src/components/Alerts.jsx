@@ -1,15 +1,22 @@
 import { useState, useMemo } from 'react';
-import { AlertTriangle, Filter, Search, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Filter, Search, CheckCircle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
-import { mockAlerts } from '../data/mockData';
+import { normalizeAlert, apiFetch } from '../utils/api';
+import { useApi } from '../hooks/useApi';
 
 export default function Alerts() {
   const [search,         setSearch]         = useState('');
   const [filterType,     setFilterType]     = useState('all');
   const [filterStatus,   setFilterStatus]   = useState('all');
   const [filterSeverity, setFilterSeverity] = useState('all');
+  const [resolving,      setResolving]      = useState(null); // ID of alert being resolved
 
-  const filtered = useMemo(() => mockAlerts.filter(a => {
+  const { data: rawAlerts, loading, error, refetch } =
+    useApi('/alerts', { transform: arr => arr.map(normalizeAlert) });
+
+  const alerts = rawAlerts ?? [];
+
+  const filtered = useMemo(() => alerts.filter(a => {
     const q = search.toLowerCase();
     return (
       (a.truckName.toLowerCase().includes(q) || a.message.toLowerCase().includes(q) || a.truckId.toLowerCase().includes(q)) &&
@@ -17,13 +24,25 @@ export default function Alerts() {
       (filterStatus   === 'all' || (filterStatus === 'active' ? !a.resolved : a.resolved)) &&
       (filterSeverity === 'all' || a.severity === filterSeverity)
     );
-  }), [search, filterType, filterStatus, filterSeverity]);
+  }), [alerts, search, filterType, filterStatus, filterSeverity]);
 
   const stats = {
-    total:    mockAlerts.length,
-    active:   mockAlerts.filter(a => !a.resolved).length,
-    resolved: mockAlerts.filter(a => a.resolved).length,
-    high:     mockAlerts.filter(a => a.severity === 'high' && !a.resolved).length,
+    total:    alerts.length,
+    active:   alerts.filter(a => !a.resolved).length,
+    resolved: alerts.filter(a => a.resolved).length,
+    high:     alerts.filter(a => a.severity === 'high' && !a.resolved).length,
+  };
+
+  const handleResolve = async (alertId) => {
+    setResolving(alertId);
+    try {
+      await apiFetch(`/alerts/${alertId}/resolve`, { method: 'PATCH' });
+      refetch();
+    } catch (err) {
+      alert(`Failed to resolve: ${err.message}`);
+    } finally {
+      setResolving(null);
+    }
   };
 
   const severities = ['all', 'high', 'medium', 'low'];
@@ -42,18 +61,32 @@ export default function Alerts() {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Alerts Management</h1>
-        <p className="text-sm text-slate-500">Monitor and manage fleet alerts and notifications</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Alerts Management</h1>
+          <p className="text-sm text-slate-500">Monitor and manage fleet alerts and notifications</p>
+        </div>
+        <button onClick={refetch} disabled={loading}
+          className="p-2 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50">
+          <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Total Alerts',   value: stats.total,    color: 'text-slate-900' },
-          { label: 'Active',         value: stats.active,   color: 'text-orange-600' },
-          { label: 'Resolved',       value: stats.resolved, color: 'text-green-600' },
-          { label: 'High Priority',  value: stats.high,     color: 'text-red-600' },
+          { label: 'Total Alerts',   value: loading ? '—' : stats.total,    color: 'text-slate-900' },
+          { label: 'Active',         value: loading ? '—' : stats.active,   color: 'text-orange-600' },
+          { label: 'Resolved',       value: loading ? '—' : stats.resolved, color: 'text-green-600' },
+          { label: 'High Priority',  value: loading ? '—' : stats.high,     color: 'text-red-600' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
             <p className="text-xs text-slate-500 mb-1">{s.label}</p>
@@ -80,8 +113,9 @@ export default function Alerts() {
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="all">All Types</option>
+            <option value="fuel_anomaly">Fuel Anomaly</option>
             <option value="anomaly">Anomaly</option>
-            <option value="rest">Rest Alert</option>
+            <option value="rest_alert">Rest Alert</option>
             <option value="maintenance">Maintenance</option>
             <option value="low_fuel">Low Fuel</option>
           </select>
@@ -105,10 +139,17 @@ export default function Alerts() {
       {/* Alerts list */}
       <div className="bg-white rounded-xl border border-slate-200">
         <div className="px-4 py-3 border-b border-slate-200">
-          <span className="text-sm font-medium text-slate-900">Alerts ({filtered.length})</span>
+          <span className="text-sm font-medium text-slate-900">
+            {loading ? 'Loading…' : `Alerts (${filtered.length})`}
+          </span>
         </div>
         <div className="divide-y divide-slate-100">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="py-16 text-center text-slate-400">
+              <RefreshCw className="w-8 h-8 mx-auto mb-3 animate-spin opacity-40" />
+              <p>Loading alerts…</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
               <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p>No alerts found</p>
@@ -129,7 +170,7 @@ export default function Alerts() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-sm font-medium text-slate-900">{alert.truckName}</span>
-                    <span className="text-xs text-slate-400">• {alert.truckId}</span>
+                    <span className="text-xs text-slate-400">• {alert.truckId.slice(0, 8)}…</span>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${
                       alert.severity === 'high' ? 'bg-red-100 text-red-800' :
                       alert.severity === 'medium' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'
@@ -144,8 +185,12 @@ export default function Alerts() {
                     <span className="hidden sm:inline">Resolved</span>
                   </div>
                 ) : (
-                  <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0">
-                    Resolve
+                  <button
+                    onClick={() => handleResolve(alert.id)}
+                    disabled={resolving === alert.id}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                  >
+                    {resolving === alert.id ? '…' : 'Resolve'}
                   </button>
                 )}
               </div>

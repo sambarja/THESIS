@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useApi } from '../hooks/useApi';
 import {
   LayoutDashboard, Map, Truck, Bell, ScrollText,
-  BarChart3, Menu, X, LogOut, User, Settings,
+  BarChart3, Route, Menu, X, LogOut, User, Settings,
 } from 'lucide-react';
 
 // Navigation items visible to ALL dashboard roles
@@ -13,6 +14,7 @@ const BASE_NAV = [
   { path: '/alerts',     icon: Bell,             label: 'Alerts' },
   { path: '/logs',       icon: ScrollText,       label: 'Logs' },
   { path: '/analytics',  icon: BarChart3,        label: 'Analytics' },
+  { path: '/trips',      icon: Route,            label: 'Trips' },
 ];
 
 // Settings only for head_admin
@@ -29,6 +31,12 @@ const ROLE_LABELS = {
 export default function Layout({ user, setUser }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Live unresolved alert count for bell badge
+  const { data: unresolvedAlerts } = useApi('/alerts/summary', {
+    transform: data => data.unresolved_count ?? 0,
+    pollInterval: 30_000,
+  });
 
   // Build nav list — Settings only appears for head_admin
   const navItems = user?.role === 'head_admin'
@@ -154,9 +162,17 @@ export default function Layout({ user, setUser }) {
               </h2>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button className="relative p-2 hover:bg-slate-100 rounded-lg">
+              <button
+                onClick={() => navigate('/alerts')}
+                className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                title="View Alerts"
+              >
                 <Bell className="w-5 h-5 text-slate-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                {unresolvedAlerts > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unresolvedAlerts > 99 ? '99+' : unresolvedAlerts}
+                  </span>
+                )}
               </button>
               <div className="hidden md:flex items-center gap-3 pl-3 border-l border-slate-200">
                 <div className="flex items-center justify-center w-9 h-9 bg-slate-200 rounded-full">

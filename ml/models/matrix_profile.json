@@ -1,0 +1,17 @@
+{
+  "window_size": 5,
+  "localization_window_size": 4,
+  "threshold_z": 4.9124130087461575,
+  "localization_threshold_z": 4.497850430924094,
+  "calibration_quantile": 0.99,
+  "min_series_length": 10,
+  "localization_min_series_length": 8,
+  "series_transform": "raw",
+  "signal_column": "fuel_level_filtered",
+  "context_thresholds": {
+    "project_native|short": 4.9124130087461575
+  },
+  "localization_context_thresholds": {
+    "project_native|short": 4.497850430924094
+  }
+}

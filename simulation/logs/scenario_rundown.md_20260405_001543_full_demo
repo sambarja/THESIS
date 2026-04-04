@@ -1,0 +1,96 @@
+# Scenario Rundown - full_demo
+
+Thesis showcase run with staggered departures, TRK-003 anomaly behavior, TRK-002 reuse by a different driver, and alert-capable routes.
+
+## Thresholds
+
+- Rest distance: 5 km
+- Rest hours: 1 h
+- Maintenance: 5000 km
+- Overspeed: 80 km/h
+
+## Approximate duration
+
+- 38.0 minutes
+
+## Trips
+
+### TRK-002-1 - TRK-002
+
+- Driver: Maria Santos
+- Start: T+0.0m (00:15)
+- End: T+21.0m (00:36)
+- Origin: 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila
+- Destination: Cainta, Rizal via C5 corridor
+- Route behavior: East-bound corridor run with moderate city traffic.
+- Anomaly expected: False
+- Rest alert expected: True
+- Maintenance alert expected: False
+- Pause/rest action expected: True
+
+### TRK-002-2 - TRK-002
+
+- Driver: Juan Dela Cruz
+- Start: T+23.0m (00:38)
+- End: T+37.0m (00:52)
+- Origin: Cainta, Rizal via C5 corridor
+- Destination: Pasay-Taguig market loop
+- Route behavior: Short urban dispatch near Pasay and Taguig.
+- Anomaly expected: False
+- Rest alert expected: True
+- Maintenance alert expected: False
+- Pause/rest action expected: False
+
+### TRK-003-1 - TRK-003
+
+- Driver: Roberto Garcia
+- Start: T+4.0m (00:19)
+- End: T+28.0m (00:43)
+- Origin: 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila
+- Destination: Novaliches, Quezon City
+- Route behavior: North-east dispatch through Metro Manila arterial roads.
+- Anomaly expected: True
+- Rest alert expected: True
+- Maintenance alert expected: False
+- Pause/rest action expected: False
+
+### TRK-004-1 - TRK-004
+
+- Driver: Ana Reyes
+- Start: T+8.0m (00:23)
+- End: T+38.0m (00:53)
+- Origin: 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila
+- Destination: Bocaue, Bulacan via NLEX
+- Route behavior: Longer north-bound expressway delivery run.
+- Anomaly expected: False
+- Rest alert expected: True
+- Maintenance alert expected: False
+- Pause/rest action expected: False
+
+## Timeline
+
+- T+0.0m: TRK-002 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Maria Santos toward Cainta, Rizal via C5 corridor.
+- T+4.0m: TRK-003 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Roberto Garcia toward Novaliches, Quezon City.
+- T+4.9m: TRK-002: Rest threshold is reached; rest alert is expected if the truck is still moving.
+- T+5.0m: TRK-002 is en route on East-bound corridor run with moderate city traffic. (27% of planned route progress).
+- T+5.9m: TRK-002: Driver presses pause/rest; truck should return to normal status while stationary.
+- T+8.0m: TRK-004 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Ana Reyes toward Bocaue, Bulacan via NLEX.
+- T+8.8m: TRK-003: Rest threshold is reached; rest alert is expected if the truck is still moving.
+- T+8.9m: TRK-002: Driver resumes the trip from the paused location.
+- T+9.0m: TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (20% of planned route progress).
+- T+10.0m: TRK-002 is en route on East-bound corridor run with moderate city traffic. (55% of planned route progress).
+- T+12.4m: TRK-004: Rest threshold is reached; rest alert is expected if the truck is still moving.
+- T+13.0m: TRK-003: Gradual fuel leak pattern begins and should remain visible to ML. | TRK-004 is en route on Longer north-bound expressway delivery run. (16% of planned route progress).
+- T+14.0m: TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (41% of planned route progress).
+- T+15.0m: TRK-002 is en route on East-bound corridor run with moderate city traffic. (83% of planned route progress).
+- T+18.0m: TRK-004 is en route on Longer north-bound expressway delivery run. (33% of planned route progress).
+- T+19.0m: TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (62% of planned route progress).
+- T+20.0m: TRK-002 is en route on East-bound corridor run with moderate city traffic. (99% of planned route progress).
+- T+21.0m: TRK-002 ends the trip and becomes idle at Cainta, Rizal via C5 corridor. | TRK-002: First driver handoff window begins.
+- T+23.0m: TRK-002 departs from Cainta, Rizal via C5 corridor with Juan Dela Cruz toward Pasay-Taguig market loop. | TRK-004 is en route on Longer north-bound expressway delivery run. (50% of planned route progress).
+- T+24.0m: TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (83% of planned route progress).
+- T+27.9m: TRK-002: Rest threshold is reached; rest alert is expected if the truck is still moving.
+- T+28.0m: TRK-002 is en route on Short urban dispatch near Pasay and Taguig. (35% of planned route progress). | TRK-003 ends the trip and becomes idle at Novaliches, Quezon City. | TRK-004 is en route on Longer north-bound expressway delivery run. (66% of planned route progress).
+- T+33.0m: TRK-002 is en route on Short urban dispatch near Pasay and Taguig. (71% of planned route progress). | TRK-004 is en route on Longer north-bound expressway delivery run. (83% of planned route progress).
+- T+37.0m: TRK-002 ends the trip and becomes idle at Pasay-Taguig market loop.
+- T+38.0m: TRK-004 ends the trip and becomes idle at Bocaue, Bulacan via NLEX.

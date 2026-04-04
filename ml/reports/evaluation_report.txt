@@ -1,61 +1,494 @@
-============================================================
-  SO4 — Anomaly Detection Evaluation Report
-  Generated: 2026-04-03 13:55:18
-============================================================
+Fuel Anomaly Detection Evaluation
+================================
+Evaluation dataset: C:\thesis_final\THESIS\ml\outputs\datasets\evaluation_dataset.csv
+IF rows evaluated: 20412
+MP trip sequences evaluated: 79
+MP signal column: fuel_level_filtered
+MP trip window size: 5
+MP localization window size: 4
 
-  Models evaluated:
-    1. Isolation Forest (IF)  — point anomaly detection
-    2. Matrix Profile   (MP)  — pattern/subsequence anomaly
+Evaluation dataset composition:
+{
+  "rows": 20412,
+  "trip_count": 79,
+  "anomalous_trip_count": 6,
+  "record_origin_counts": {
+    "public_geolife_route_derived_fuel": 19778,
+    "project_simulation_logs": 634
+  },
+  "augmentation_type_counts": {
+    "none": 20412
+  },
+  "label_source_counts": {
+    "clean_public_route": 19778,
+    "clean": 498,
+    "controlled_injection": 136
+  },
+  "trip_source_category_counts": {
+    "public_route": 19778,
+    "project_native": 634
+  },
+  "evaluation_subset_counts": {
+    "public_clean": 19778,
+    "project_native_clean": 498,
+    "project_native_injected": 136
+  },
+  "trip_length_band_counts": {
+    "medium": 31,
+    "short": 30,
+    "long": 18
+  }
+}
 
-============================================================
-  ISOLATION FOREST RESULTS
-============================================================
-  Test samples   : 430
-  Precision      : 83.87%  (thesis target ≥ 90%)
-  Recall         : 100.00%
-  False Pos Rate : 8.33%  (thesis target ≤ 10%)
-  F1 Score       : 91.23%
-  Accuracy       : 94.19%
+Objective thresholds:
+- Precision >= 90%
+- False positive rate <= 10%
+- Average detection latency < 10 seconds
 
-  Confusion Matrix (IF):
-                Predicted +   Predicted -
-  Actual    +        130             0
-  Actual    -         25           275
+Metrics summary:
+[
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "TP": 29,
+    "FP": 3991,
+    "FN": 0,
+    "TN": 16392,
+    "precision": 0.007213930348258706,
+    "recall": 1.0,
+    "false_positive_rate": 0.19580042192022765,
+    "accuracy": 0.8044777581814618,
+    "positive_label_count": 29,
+    "negative_label_count": 20383,
+    "roc_auc": 0.8051960135812974,
+    "pr_auc": 0.0034791835148942113,
+    "average_detection_latency_sec": 0.0,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 6,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "TP": 5,
+    "FP": 53,
+    "FN": 1,
+    "TN": 20,
+    "precision": 0.08620689655172414,
+    "recall": 0.8333333333333334,
+    "false_positive_rate": 0.726027397260274,
+    "accuracy": 0.31645569620253167,
+    "positive_label_count": 6,
+    "negative_label_count": 73,
+    "roc_auc": 0.3162100456621005,
+    "pr_auc": 0.052505893926417475,
+    "average_detection_latency_sec": 9.803526,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 5,
+    "missed_anomalous_trips": 1,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  }
+]
 
+Objective checks:
+{
+  "precision_target": 0.9,
+  "false_positive_rate_target": 0.1,
+  "latency_target_sec": 10.0,
+  "isolation_forest_meets_precision_target": false,
+  "isolation_forest_meets_fpr_target": false,
+  "isolation_forest_meets_latency_target": true,
+  "matrix_profile_meets_precision_target": false,
+  "matrix_profile_meets_fpr_target": false,
+  "matrix_profile_meets_latency_target": true,
+  "project_native_benchmark": {
+    "isolation_forest_precision": 0.8787878787878788,
+    "isolation_forest_fpr": 0.006611570247933884,
+    "isolation_forest_latency_sec": 0.0,
+    "matrix_profile_precision": 1.0,
+    "matrix_profile_fpr": 0.0,
+    "matrix_profile_latency_sec": 9.803526
+  },
+  "public_clean_false_alarm_characterization": {
+    "isolation_forest_fpr": 0.2015876226109819,
+    "matrix_profile_fpr": 0.7910447761194029
+  }
+}
 
-============================================================
-  MATRIX PROFILE RESULTS
-============================================================
-  Test series    : 4
-  Anomaly series : 3
-  Detected       : 3
+Source-aware / partition breakdown:
+[
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "overall",
+    "subset_group": "all_rows",
+    "subset_rows": 20412,
+    "subset_trip_count": 79,
+    "subset_scope": "mixed_controlled_benchmark",
+    "subset_note": "Subset contains both normal and anomalous samples.",
+    "TP": 29,
+    "FP": 3991,
+    "FN": 0,
+    "TN": 16392,
+    "precision": 0.007213930348258706,
+    "recall": 1.0,
+    "false_positive_rate": 0.19580042192022765,
+    "accuracy": 0.8044777581814618,
+    "positive_label_count": 29,
+    "negative_label_count": 20383,
+    "roc_auc": 0.8051960135812974,
+    "pr_auc": 0.0034791835148942113,
+    "average_detection_latency_sec": 0.0,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 6,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native",
+    "subset_group": "source_subset",
+    "subset_rows": 634,
+    "subset_trip_count": 12,
+    "subset_scope": "mixed_controlled_benchmark",
+    "subset_note": "Subset contains both normal and anomalous samples.",
+    "TP": 29,
+    "FP": 4,
+    "FN": 0,
+    "TN": 601,
+    "precision": 0.8787878787878788,
+    "recall": 1.0,
+    "false_positive_rate": 0.006611570247933884,
+    "accuracy": 0.9936908517350158,
+    "positive_label_count": 29,
+    "negative_label_count": 605,
+    "roc_auc": 0.9995440296380735,
+    "pr_auc": 0.9900811235674686,
+    "average_detection_latency_sec": 0.0,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 6,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "public_source",
+    "subset_group": "source_subset",
+    "subset_rows": 19778,
+    "subset_trip_count": 67,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 3987,
+    "FN": 0,
+    "TN": 15791,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.2015876226109819,
+    "accuracy": 0.798412377389018,
+    "positive_label_count": 0,
+    "negative_label_count": 19778,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  },
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native_clean",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 498,
+    "subset_trip_count": 12,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 3,
+    "FN": 0,
+    "TN": 495,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.006024096385542169,
+    "accuracy": 0.9939759036144579,
+    "positive_label_count": 0,
+    "negative_label_count": 498,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  },
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native_injected",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 136,
+    "subset_trip_count": 6,
+    "subset_scope": "mixed_controlled_benchmark",
+    "subset_note": "Subset contains both normal and anomalous samples.",
+    "TP": 29,
+    "FP": 1,
+    "FN": 0,
+    "TN": 106,
+    "precision": 0.9666666666666667,
+    "recall": 1.0,
+    "false_positive_rate": 0.009345794392523364,
+    "accuracy": 0.9926470588235294,
+    "positive_label_count": 29,
+    "negative_label_count": 107,
+    "roc_auc": 0.9993554624556881,
+    "pr_auc": 0.9976204631674308,
+    "average_detection_latency_sec": 0.0,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 6,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Isolation Forest",
+    "granularity": "row",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "public_clean",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 19778,
+    "subset_trip_count": 67,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 3987,
+    "FN": 0,
+    "TN": 15791,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.2015876226109819,
+    "accuracy": 0.798412377389018,
+    "positive_label_count": 0,
+    "negative_label_count": 19778,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "overall",
+    "subset_group": "all_trips",
+    "subset_rows": 79,
+    "subset_trip_count": 79,
+    "subset_scope": "mixed_controlled_benchmark",
+    "subset_note": "Subset contains both normal and anomalous samples.",
+    "TP": 5,
+    "FP": 53,
+    "FN": 1,
+    "TN": 20,
+    "precision": 0.08620689655172414,
+    "recall": 0.8333333333333334,
+    "false_positive_rate": 0.726027397260274,
+    "accuracy": 0.31645569620253167,
+    "positive_label_count": 6,
+    "negative_label_count": 73,
+    "roc_auc": 0.3162100456621005,
+    "pr_auc": 0.052505893926417475,
+    "average_detection_latency_sec": 9.803526,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 5,
+    "missed_anomalous_trips": 1,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native",
+    "subset_group": "source_subset",
+    "subset_rows": 12,
+    "subset_trip_count": 12,
+    "subset_scope": "mixed_controlled_benchmark",
+    "subset_note": "Subset contains both normal and anomalous samples.",
+    "TP": 5,
+    "FP": 0,
+    "FN": 1,
+    "TN": 6,
+    "precision": 1.0,
+    "recall": 0.8333333333333334,
+    "false_positive_rate": 0.0,
+    "accuracy": 0.9166666666666666,
+    "positive_label_count": 6,
+    "negative_label_count": 6,
+    "roc_auc": 0.9027777777777779,
+    "pr_auc": 0.9444444444444444,
+    "average_detection_latency_sec": 9.803526,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 5,
+    "missed_anomalous_trips": 1,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "public_source",
+    "subset_group": "source_subset",
+    "subset_rows": 67,
+    "subset_trip_count": 67,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 53,
+    "FN": 0,
+    "TN": 14,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.7910447761194029,
+    "accuracy": 0.208955223880597,
+    "positive_label_count": 0,
+    "negative_label_count": 67,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native_clean",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 6,
+    "subset_trip_count": 6,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 0,
+    "FN": 0,
+    "TN": 6,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.0,
+    "accuracy": 1.0,
+    "positive_label_count": 0,
+    "negative_label_count": 6,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "project_native_injected",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 6,
+    "subset_trip_count": 6,
+    "subset_scope": "positive_only_sensitivity",
+    "subset_note": "Subset contains only anomalous samples; use recall/latency more than false-positive rate.",
+    "TP": 5,
+    "FP": 0,
+    "FN": 1,
+    "TN": 0,
+    "precision": 1.0,
+    "recall": 0.8333333333333334,
+    "false_positive_rate": 0.0,
+    "accuracy": 0.8333333333333334,
+    "positive_label_count": 6,
+    "negative_label_count": 0,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": 9.803526,
+    "median_detection_latency_sec": 0.0,
+    "detected_anomalous_trips": 5,
+    "missed_anomalous_trips": 1,
+    "latency_target_sec": 10.0,
+    "latency_target_met": true
+  },
+  {
+    "model": "Matrix Profile",
+    "granularity": "trip_subsequence",
+    "data_source": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "subset_name": "public_clean",
+    "subset_group": "benchmark_partition",
+    "subset_rows": 67,
+    "subset_trip_count": 67,
+    "subset_scope": "clean_false_alarm_characterization",
+    "subset_note": "Subset contains only normal samples; use false-positive rate more than recall.",
+    "TP": 0,
+    "FP": 53,
+    "FN": 0,
+    "TN": 14,
+    "precision": 0.0,
+    "recall": 0.0,
+    "false_positive_rate": 0.7910447761194029,
+    "accuracy": 0.208955223880597,
+    "positive_label_count": 0,
+    "negative_label_count": 67,
+    "roc_auc": NaN,
+    "pr_auc": NaN,
+    "average_detection_latency_sec": NaN,
+    "median_detection_latency_sec": NaN,
+    "detected_anomalous_trips": 0,
+    "missed_anomalous_trips": 0,
+    "latency_target_sec": 10.0,
+    "latency_target_met": false
+  }
+]
 
-  [WRONG  ] normal_series         pred=ANOMALY  score=3.2255
-  [CORRECT] theft_series          pred=ANOMALY  score=2.7627
-  [WRONG  ] leak_series           pred=normal   score=0.2889
-  [CORRECT] sensor_spike          pred=ANOMALY  score=3.0595
+Visual artifacts:
+{
+  "fuel_overlay_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\fuel_level_anomaly_overlay.png",
+  "gps_overlay_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\gps_anomaly_overlay.png",
+  "matrix_profile_plot": "C:\\thesis_final\\THESIS\\ml\\reports\\plots\\matrix_profile_overlay.png",
+  "focus_trip": {
+    "truck_id": "11111111-0000-0000-0000-000000000001",
+    "trip_id": "395cfac3-cc70-57f5-93d0-277c33097783"
+  }
+}
 
-  Precision      : 66.67%
-  Recall         : 66.67%
-  False Pos Rate : 100.00%
-  F1 Score       : 66.67%
-
-  Confusion Matrix (MP):
-                Predicted +   Predicted -
-  Actual    +          2             1
-  Actual    -          1             0
-
-
-============================================================
-  PER-SCENARIO BREAKDOWN (Isolation Forest)
-============================================================
-  fuel_leak             n= 50  anomalies=50  caught=50  FP=0
-  fuel_theft            n= 50  anomalies=50  caught=50  FP=0
-  normal_driving        n=200  anomalies=0  caught=0  FP=4
-  parked                n= 50  anomalies=0  caught=0  FP=7
-  refuel                n= 50  anomalies=0  caught=0  FP=14
-  sensor_error          n= 30  anomalies=30  caught=30  FP=0
-
-============================================================
-  END OF REPORT
-============================================================
+IF predictions CSV: C:\thesis_final\THESIS\ml\outputs\predictions\evaluation_predictions_iforest.csv
+MP predictions CSV: C:\thesis_final\THESIS\ml\outputs\predictions\evaluation_predictions_matrix_profile.csv
+MP row predictions CSV: C:\thesis_final\THESIS\ml\outputs\predictions\evaluation_predictions_matrix_profile_rows.csv
+IF latency CSV: C:\thesis_final\THESIS\ml\outputs\predictions\detection_latency_iforest.csv
+MP latency CSV: C:\thesis_final\THESIS\ml\outputs\predictions\detection_latency_matrix_profile.csv
+Metrics CSV: C:\thesis_final\THESIS\ml\reports\metrics_summary.csv
+Breakdown metrics CSV: C:\thesis_final\THESIS\ml\reports\metrics_breakdown.csv
+Confusion JSON: C:\thesis_final\THESIS\ml\reports\confusion_matrices.json
+Dataset summary JSON: C:\thesis_final\THESIS\ml\reports\evaluation_dataset_summary.json

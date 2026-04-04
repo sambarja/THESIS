@@ -1,30 +1,43 @@
 import { useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { mockTrucks } from '../data/mockData';
+import { Search, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { useLiveFleet } from '../hooks/useLiveFleet';
 import { getStatusColor, getStatusLabel } from '../utils/statusColors';
 import TruckDetailModal from './TruckDetailModal';
 
 export default function Trucks() {
   const [selectedTruckId, setSelectedTruckId] = useState(null);
-  const [searchTerm, setSearchTerm]           = useState('');
-  const [filterStatus, setFilterStatus]       = useState('all');
-  const [viewMode, setViewMode]               = useState('grid');
+  const [searchTerm,       setSearchTerm]      = useState('');
+  const [filterStatus,     setFilterStatus]    = useState('all');
+  const [viewMode,         setViewMode]        = useState('grid');
 
-  const selectedTruck = mockTrucks.find(t => t.id === selectedTruckId);
+  const { trucks, loading, error, refetch } = useLiveFleet();
+  const selectedTruck = trucks.find(t => t.id === selectedTruckId);
 
-  const filtered = mockTrucks.filter(t => {
+  const filtered = trucks.filter(t => {
     const q = searchTerm.toLowerCase();
-    const matchSearch = t.name.toLowerCase().includes(q) || t.driver.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
+    const matchSearch = t.name.toLowerCase().includes(q)
+      || t.driver.toLowerCase().includes(q)
+      || t.code.toLowerCase().includes(q);
     const matchStatus = filterStatus === 'all' || t.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Fleet Management</h1>
-        <p className="text-sm text-slate-500">Manage and monitor all trucks in your fleet</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-1">Fleet Management</h1>
+          <p className="text-sm text-slate-500">Manage and monitor all trucks in your fleet</p>
+        </div>
+        <button onClick={refetch} disabled={loading}
+          className="p-2 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50">
+          <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>
+      )}
 
       {/* Search + Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
@@ -35,7 +48,7 @@ export default function Trucks() {
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search by name, driver, or ID..."
+              placeholder="Search by name, driver, or code..."
               className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -75,13 +88,17 @@ export default function Trucks() {
       </div>
 
       <p className="text-xs text-slate-500 mb-4">
-        Showing {filtered.length} of {mockTrucks.length} trucks
+        {loading ? 'Loading…' : `Showing ${filtered.length} of ${trucks.length} trucks`}
       </p>
 
       {/* Grid view */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(truck => (
+          {loading ? (
+            <p className="col-span-full text-center text-slate-400 py-12">Loading trucks…</p>
+          ) : filtered.length === 0 ? (
+            <p className="col-span-full text-center text-slate-400 py-12">No trucks match your filters</p>
+          ) : filtered.map(truck => (
             <button
               key={truck.id}
               onClick={() => setSelectedTruckId(truck.id)}
@@ -90,7 +107,7 @@ export default function Trucks() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">{truck.name}</h3>
-                  <p className="text-xs text-slate-400">{truck.id}</p>
+                  <p className="text-xs text-slate-400">{truck.code}</p>
                 </div>
                 <div className={`w-2.5 h-2.5 rounded-full mt-1 ${getStatusColor(truck.status)}`} />
               </div>
@@ -120,7 +137,11 @@ export default function Trucks() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map(truck => (
+                {loading ? (
+                  <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Loading trucks…</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No trucks match your filters</td></tr>
+                ) : filtered.map(truck => (
                   <tr
                     key={truck.id}
                     onClick={() => setSelectedTruckId(truck.id)}
@@ -131,7 +152,7 @@ export default function Trucks() {
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(truck.status)}`} />
                         <div>
                           <p className="font-medium text-slate-900">{truck.name}</p>
-                          <p className="text-xs text-slate-400">{truck.id}</p>
+                          <p className="text-xs text-slate-400">{truck.code}</p>
                         </div>
                       </div>
                     </td>

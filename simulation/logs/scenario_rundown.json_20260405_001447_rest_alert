@@ -1,0 +1,237 @@
+{
+  "scenario": "rest_alert",
+  "description": "Dedicated rest-alert validation. Demonstrates re-alert eligibility, pause/rest clearing, and resumed travel.",
+  "duration_minutes": 35.0,
+  "thresholds": {
+    "rest_hours": 1,
+    "overspeed_kmh": 80,
+    "maintenance_km": 5000,
+    "rest_distance_km": 5
+  },
+  "runs": [
+    {
+      "truck_code": "TRK-003",
+      "depart_min": 0,
+      "trips": [
+        {
+          "driver": "roberto",
+          "route": "nlex_north",
+          "profile": "heavy",
+          "event": "normal",
+          "planned_minutes": 32,
+          "pause_on_rest": true,
+          "pause_minutes": 3,
+          "title": "Rest compliance demonstration"
+        }
+      ],
+      "prepared_trips": [
+        {
+          "trip_label": "TRK-003-1",
+          "title": "Rest compliance demonstration",
+          "truck_code": "TRK-003",
+          "truck_id": "11111111-0000-0000-0000-000000000003",
+          "driver": "roberto",
+          "driver_name": "Roberto Garcia",
+          "driver_id": "22222222-0000-0000-0000-000000000004",
+          "route_key": "nlex_north",
+          "route_label": "Longer north-bound expressway delivery run.",
+          "origin_label": "7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila",
+          "destination_label": "Bocaue, Bulacan via NLEX",
+          "profile": "heavy",
+          "event": "normal",
+          "planned_minutes": 32.0,
+          "route_points": [
+            [
+              14.5029,
+              121.0169
+            ],
+            [
+              14.8,
+              120.94
+            ]
+          ],
+          "route_distance_km": 34.06,
+          "start_offset_min": 0.0,
+          "rest_minute": 4.7,
+          "maintenance_minute": null,
+          "event_minute": null,
+          "pause_start_minute": 5.7,
+          "pause_end_minute": 8.7,
+          "rest_expected": true,
+          "maintenance_expected": false,
+          "anomaly_expected": false,
+          "pause_expected": true,
+          "pause_start_tick": 68,
+          "pause_duration_ticks": 36,
+          "event_tick": null,
+          "duration_minutes_total": 35.0,
+          "end_offset_min": 35.0,
+          "handover_gap_min": 0.0
+        }
+      ]
+    },
+    {
+      "truck_code": "TRK-004",
+      "depart_min": 6,
+      "trips": [
+        {
+          "driver": "ana",
+          "route": "cavite_sw",
+          "profile": "efficient",
+          "event": "normal",
+          "planned_minutes": 16,
+          "title": "Parallel clean run"
+        }
+      ],
+      "prepared_trips": [
+        {
+          "trip_label": "TRK-004-1",
+          "title": "Parallel clean run",
+          "truck_code": "TRK-004",
+          "truck_id": "11111111-0000-0000-0000-000000000004",
+          "driver": "ana",
+          "driver_name": "Ana Reyes",
+          "driver_id": "22222222-0000-0000-0000-000000000005",
+          "route_key": "cavite_sw",
+          "route_label": "South-west delivery run toward Cavite.",
+          "origin_label": "7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila",
+          "destination_label": "Bacoor, Cavite",
+          "profile": "efficient",
+          "event": "normal",
+          "planned_minutes": 16.0,
+          "route_points": [
+            [
+              14.5029,
+              121.0169
+            ],
+            [
+              14.4081,
+              120.897
+            ]
+          ],
+          "route_distance_km": 16.67,
+          "start_offset_min": 6.0,
+          "rest_minute": 4.8,
+          "maintenance_minute": null,
+          "event_minute": null,
+          "pause_start_minute": null,
+          "pause_end_minute": null,
+          "rest_expected": true,
+          "maintenance_expected": false,
+          "anomaly_expected": false,
+          "pause_expected": false,
+          "pause_start_tick": null,
+          "pause_duration_ticks": 0,
+          "event_tick": null,
+          "duration_minutes_total": 16.0,
+          "end_offset_min": 22.0,
+          "handover_gap_min": 0.0
+        }
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "minute": 0.0,
+      "messages": [
+        "TRK-003 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Roberto Garcia toward Bocaue, Bulacan via NLEX."
+      ]
+    },
+    {
+      "minute": 4.7,
+      "messages": [
+        "TRK-003: Rest threshold is reached; rest alert is expected if the truck is still moving."
+      ]
+    },
+    {
+      "minute": 5.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (15% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 5.7,
+      "messages": [
+        "TRK-003: Driver presses pause/rest; truck should return to normal status while stationary."
+      ]
+    },
+    {
+      "minute": 6.0,
+      "messages": [
+        "TRK-004 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Ana Reyes toward Bacoor, Cavite."
+      ]
+    },
+    {
+      "minute": 8.7,
+      "messages": [
+        "TRK-003: Driver resumes the trip from the paused location."
+      ]
+    },
+    {
+      "minute": 10.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (31% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 10.8,
+      "messages": [
+        "TRK-004: Rest threshold is reached; rest alert is expected if the truck is still moving."
+      ]
+    },
+    {
+      "minute": 11.0,
+      "messages": [
+        "TRK-004 is en route on South-west delivery run toward Cavite. (31% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 15.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (46% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 16.0,
+      "messages": [
+        "TRK-004 is en route on South-west delivery run toward Cavite. (62% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 20.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (62% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 21.0,
+      "messages": [
+        "TRK-004 is en route on South-west delivery run toward Cavite. (93% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 22.0,
+      "messages": [
+        "TRK-004 ends the trip and becomes idle at Bacoor, Cavite."
+      ]
+    },
+    {
+      "minute": 25.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (78% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 30.0,
+      "messages": [
+        "TRK-003 is en route on Longer north-bound expressway delivery run. (93% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 35.0,
+      "messages": [
+        "TRK-003 ends the trip and becomes idle at Bocaue, Bulacan via NLEX."
+      ]
+    }
+  ]
+}

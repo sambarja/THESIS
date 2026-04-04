@@ -1,0 +1,4 @@
+id,truck_code,plate_number,model,status,device_installed,notes,created_at
+11111111-0000-0000-0000-000000000003,TRK-003,GHI-9012,Hino 300 Series 2021,maintenance,True,Scheduled oil change due,2026-04-04T03:10:19.418355+00:00
+11111111-0000-0000-0000-000000000002,TRK-002,DEF-5678,Mitsubishi Fuso 2019,active,True,Secondary unit — south route,2026-04-04T03:10:19.418355+00:00
+11111111-0000-0000-0000-000000000004,TRK-004,JKL-3456,Isuzu NLR 2022,active,True,East route unit,2026-04-04T03:10:19.418355+00:00

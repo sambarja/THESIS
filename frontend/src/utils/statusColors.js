@@ -7,6 +7,7 @@ export function getStatusColor(status) {
     case 'rest_alert':  return 'bg-amber-500';
     case 'low_fuel':    return 'bg-yellow-500';
     case 'offline':     return 'bg-slate-600';
+    case 'paused':      return 'bg-amber-400';
     default:            return 'bg-gray-400';
   }
 }
@@ -20,6 +21,7 @@ export function getStatusLabel(status) {
     case 'rest_alert':  return 'Rest Required';
     case 'low_fuel':    return 'Low Fuel';
     case 'offline':     return 'Offline';
+    case 'paused':      return 'Driver Resting';
     default:            return 'Unknown';
   }
 }

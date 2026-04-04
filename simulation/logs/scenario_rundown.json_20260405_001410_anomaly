@@ -1,0 +1,304 @@
+{
+  "scenario": "anomaly",
+  "description": "Fuel anomaly validation demo. One truck shows theft, one shows a leak, and one remains normal as a control.",
+  "duration_minutes": 28.0,
+  "thresholds": {
+    "rest_hours": 1,
+    "overspeed_kmh": 80,
+    "maintenance_km": 5000,
+    "rest_distance_km": 5
+  },
+  "runs": [
+    {
+      "truck_code": "TRK-002",
+      "depart_min": 0,
+      "trips": [
+        {
+          "driver": "maria",
+          "route": "c5_east",
+          "profile": "standard",
+          "event": "theft",
+          "planned_minutes": 18,
+          "event_minute": 11,
+          "title": "Theft test run"
+        }
+      ],
+      "prepared_trips": [
+        {
+          "trip_label": "TRK-002-1",
+          "title": "Theft test run",
+          "truck_code": "TRK-002",
+          "truck_id": "11111111-0000-0000-0000-000000000002",
+          "driver": "maria",
+          "driver_name": "Maria Santos",
+          "driver_id": "22222222-0000-0000-0000-000000000003",
+          "route_key": "c5_east",
+          "route_label": "East-bound corridor run with moderate city traffic.",
+          "origin_label": "7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila",
+          "destination_label": "Cainta, Rizal via C5 corridor",
+          "profile": "standard",
+          "event": "theft",
+          "planned_minutes": 18.0,
+          "route_points": [
+            [
+              14.5029,
+              121.0169
+            ],
+            [
+              14.62,
+              121.135
+            ]
+          ],
+          "route_distance_km": 18.2,
+          "start_offset_min": 0.0,
+          "rest_minute": 4.9,
+          "maintenance_minute": null,
+          "event_minute": 11,
+          "pause_start_minute": null,
+          "pause_end_minute": null,
+          "rest_expected": true,
+          "maintenance_expected": false,
+          "anomaly_expected": true,
+          "pause_expected": false,
+          "pause_start_tick": null,
+          "pause_duration_ticks": 0,
+          "event_tick": 132,
+          "duration_minutes_total": 18.0,
+          "end_offset_min": 18.0,
+          "handover_gap_min": 0.0
+        }
+      ]
+    },
+    {
+      "truck_code": "TRK-003",
+      "depart_min": 4,
+      "trips": [
+        {
+          "driver": "roberto",
+          "route": "quezon_ne",
+          "profile": "heavy",
+          "event": "leak",
+          "planned_minutes": 24,
+          "event_minute": 9,
+          "title": "Leak progression run"
+        }
+      ],
+      "prepared_trips": [
+        {
+          "trip_label": "TRK-003-1",
+          "title": "Leak progression run",
+          "truck_code": "TRK-003",
+          "truck_id": "11111111-0000-0000-0000-000000000003",
+          "driver": "roberto",
+          "driver_name": "Roberto Garcia",
+          "driver_id": "22222222-0000-0000-0000-000000000004",
+          "route_key": "quezon_ne",
+          "route_label": "North-east dispatch through Metro Manila arterial roads.",
+          "origin_label": "7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila",
+          "destination_label": "Novaliches, Quezon City",
+          "profile": "heavy",
+          "event": "leak",
+          "planned_minutes": 24.0,
+          "route_points": [
+            [
+              14.5029,
+              121.0169
+            ],
+            [
+              14.7258,
+              121.04
+            ]
+          ],
+          "route_distance_km": 24.91,
+          "start_offset_min": 4.0,
+          "rest_minute": 4.8,
+          "maintenance_minute": null,
+          "event_minute": 9,
+          "pause_start_minute": null,
+          "pause_end_minute": null,
+          "rest_expected": true,
+          "maintenance_expected": false,
+          "anomaly_expected": true,
+          "pause_expected": false,
+          "pause_start_tick": null,
+          "pause_duration_ticks": 0,
+          "event_tick": 108,
+          "duration_minutes_total": 24.0,
+          "end_offset_min": 28.0,
+          "handover_gap_min": 0.0
+        }
+      ]
+    },
+    {
+      "truck_code": "TRK-004",
+      "depart_min": 8,
+      "trips": [
+        {
+          "driver": "ana",
+          "route": "market_loop",
+          "profile": "efficient",
+          "event": "normal",
+          "planned_minutes": 14,
+          "title": "Clean control run"
+        }
+      ],
+      "prepared_trips": [
+        {
+          "trip_label": "TRK-004-1",
+          "title": "Clean control run",
+          "truck_code": "TRK-004",
+          "truck_id": "11111111-0000-0000-0000-000000000004",
+          "driver": "ana",
+          "driver_name": "Ana Reyes",
+          "driver_id": "22222222-0000-0000-0000-000000000005",
+          "route_key": "market_loop",
+          "route_label": "Short urban dispatch near Pasay and Taguig.",
+          "origin_label": "7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila",
+          "destination_label": "Pasay-Taguig market loop",
+          "profile": "efficient",
+          "event": "normal",
+          "planned_minutes": 14.0,
+          "route_points": [
+            [
+              14.5029,
+              121.0169
+            ],
+            [
+              14.558,
+              121.018
+            ]
+          ],
+          "route_distance_km": 6.13,
+          "start_offset_min": 8.0,
+          "rest_minute": 11.4,
+          "maintenance_minute": null,
+          "event_minute": null,
+          "pause_start_minute": null,
+          "pause_end_minute": null,
+          "rest_expected": true,
+          "maintenance_expected": false,
+          "anomaly_expected": false,
+          "pause_expected": false,
+          "pause_start_tick": null,
+          "pause_duration_ticks": 0,
+          "event_tick": null,
+          "duration_minutes_total": 14.0,
+          "end_offset_min": 22.0,
+          "handover_gap_min": 0.0
+        }
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "minute": 0.0,
+      "messages": [
+        "TRK-002 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Maria Santos toward Cainta, Rizal via C5 corridor."
+      ]
+    },
+    {
+      "minute": 4.0,
+      "messages": [
+        "TRK-003 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Roberto Garcia toward Novaliches, Quezon City."
+      ]
+    },
+    {
+      "minute": 4.9,
+      "messages": [
+        "TRK-002: Rest threshold is reached; rest alert is expected if the truck is still moving."
+      ]
+    },
+    {
+      "minute": 5.0,
+      "messages": [
+        "TRK-002 is en route on East-bound corridor run with moderate city traffic. (27% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 8.0,
+      "messages": [
+        "TRK-004 departs from 7887B Ninoy Aquino Ave, Paranaque, 1709 Metro Manila with Ana Reyes toward Pasay-Taguig market loop."
+      ]
+    },
+    {
+      "minute": 8.8,
+      "messages": [
+        "TRK-003: Rest threshold is reached; rest alert is expected if the truck is still moving."
+      ]
+    },
+    {
+      "minute": 9.0,
+      "messages": [
+        "TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (20% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 10.0,
+      "messages": [
+        "TRK-002 is en route on East-bound corridor run with moderate city traffic. (55% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 11.0,
+      "messages": [
+        "TRK-002: Sudden ECU fuel drop anomaly is injected for ML detection."
+      ]
+    },
+    {
+      "minute": 13.0,
+      "messages": [
+        "TRK-003: Gradual fuel leak pattern begins and should remain visible to ML.",
+        "TRK-004 is en route on Short urban dispatch near Pasay and Taguig. (35% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 14.0,
+      "messages": [
+        "TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (41% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 15.0,
+      "messages": [
+        "TRK-002 is en route on East-bound corridor run with moderate city traffic. (83% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 18.0,
+      "messages": [
+        "TRK-002 ends the trip and becomes idle at Cainta, Rizal via C5 corridor.",
+        "TRK-004 is en route on Short urban dispatch near Pasay and Taguig. (71% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 19.0,
+      "messages": [
+        "TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (62% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 19.4,
+      "messages": [
+        "TRK-004: Rest threshold is reached; rest alert is expected if the truck is still moving."
+      ]
+    },
+    {
+      "minute": 22.0,
+      "messages": [
+        "TRK-004 ends the trip and becomes idle at Pasay-Taguig market loop."
+      ]
+    },
+    {
+      "minute": 24.0,
+      "messages": [
+        "TRK-003 is en route on North-east dispatch through Metro Manila arterial roads. (83% of planned route progress)."
+      ]
+    },
+    {
+      "minute": 28.0,
+      "messages": [
+        "TRK-003 ends the trip and becomes idle at Novaliches, Quezon City."
+      ]
+    }
+  ]
+}

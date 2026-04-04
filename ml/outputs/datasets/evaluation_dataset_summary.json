@@ -1,0 +1,19 @@
+{
+  "rows": 20412,
+  "trip_count": 79,
+  "anomalous_trip_count": 6,
+  "record_origin_counts": {
+    "public_geolife_route_derived_fuel": 19778,
+    "project_simulation_logs": 634
+  },
+  "augmentation_type_counts": {
+    "none": 20412
+  },
+  "project_native_trip_count": 12,
+  "public_clean_trip_count": 67,
+  "public_usage_policy": {
+    "vehicle_telematics_public": "used as a telemetry-noise and startup-reference dataset; not inserted directly as evaluation ground truth",
+    "bus_fuel_sensors_public": "used as a heavy-vehicle fuel-consumption reference for derived fuel traces; not inserted directly as route ground truth",
+    "geolife_public_route": "inserted as clean route geometry and timestamp ground truth after schema mapping; fuel and truck identifiers remain derived for thesis simulation"
+  }
+}

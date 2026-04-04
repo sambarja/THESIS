@@ -1,0 +1,94 @@
+{
+  "canonical_training_schema": [
+    "id",
+    "timestamp",
+    "truck_id",
+    "driver_id",
+    "trip_id",
+    "fuel_level",
+    "lat",
+    "lon",
+    "speed",
+    "speed_kmph",
+    "odometer_km",
+    "engine_status",
+    "fuel_delta",
+    "odometer_delta",
+    "delta_time_sec",
+    "fuel_per_km",
+    "fuel_rate_per_hour",
+    "anomaly_flag",
+    "anomaly_score",
+    "model_source"
+  ],
+  "selected_public_datasets": [
+    {
+      "name": "geolife_trajectories_1_3.zip",
+      "role": "primary public route geometry source",
+      "why": "Provides labeled, time-stamped GPS trajectories with dense 1-5 second sampling that can be mapped into trip-based route playback for simulation and dashboard realism.",
+      "used_columns": [
+        "latitude",
+        "longitude",
+        "date",
+        "time",
+        "labels.txt transportation mode"
+      ]
+    },
+    {
+      "name": "vehicle_telematics.csv",
+      "role": "public reference for startup/noise realism",
+      "why": "Provides ordered trip IDs, speed, efficiency, and driver-behavior events that help bound realistic startup fluctuation and telemetry jitter when deriving truck-like fuel traces.",
+      "used_columns": [
+        "tripID",
+        "deviceID",
+        "timeStamp",
+        "gps_speed",
+        "speed",
+        "kpl",
+        "maf",
+        "rpm",
+        "hard_brake_event",
+        "event"
+      ]
+    },
+    {
+      "name": "bus_fuel_sensors.csv",
+      "role": "heavy-vehicle stop-go and idle reference",
+      "why": "Provides timestamped heavy-vehicle fuel_per_km, stop-time, brake, and acceleration behavior used to derive truck-style fuel traces on top of public route geometry.",
+      "used_columns": [
+        "Date-time",
+        "VehicleID",
+        "fuel_per_km",
+        "stop_ptime",
+        "avg_slope",
+        "mass",
+        "brake_usage",
+        "accel"
+      ]
+    }
+  ],
+  "not_integrated_to_avoid_noise": [
+    {
+      "name": "obd2_kit/*.csv",
+      "reason": "Useful as a sensor reference but excluded from the main dataset pipeline because GPS, trip structure, and fuel level are incomplete for Supabase-aligned outputs."
+    },
+    {
+      "name": "fuel_consumption_canada.csv",
+      "reason": "Useful for sanity checks only; not time-series telemetry and not directly suitable for trip-sequence training."
+    }
+  ],
+  "files_written": {
+    "trucks_seed_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\trucks_seed.csv",
+    "drivers_seed_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\drivers_seed.csv",
+    "cleaned_telemetry_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\cleaned_telemetry.csv",
+    "trip_sessions_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\trip_sessions.csv",
+    "evaluation_dataset_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset.csv",
+    "evaluation_dataset_summary_json": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\evaluation_dataset_summary.json",
+    "trip_pool_summary_json": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\trip_pool_summary.json",
+    "public_geolife_quality_summary_json": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\public_geolife_quality_summary.json",
+    "alerts_seed_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\alerts_seed.csv",
+    "public_primary_telematics_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\public_primary_telematics.csv",
+    "aux_fuel_reference_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\aux_fuel_reference.csv",
+    "public_geolife_routes_csv": "C:\\thesis_final\\THESIS\\ml\\outputs\\datasets\\public_geolife_routes.csv"
+  }
+}

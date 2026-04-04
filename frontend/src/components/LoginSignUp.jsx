@@ -5,11 +5,11 @@ import { Truck, Lock, User, AlertCircle } from 'lucide-react';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function LoginSignUp({ user, setUser }) {
-  const navigate   = useNavigate();
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
+  const navigate     = useNavigate();
+  const [username,   setUsername] = useState('');
+  const [password,   setPassword] = useState('');
+  const [loading,    setLoading]  = useState(false);
+  const [error,      setError]    = useState('');
 
   // If already logged in, redirect to dashboard
   if (user) {
@@ -26,18 +26,16 @@ export default function LoginSignUp({ user, setUser }) {
       const res = await fetch(`${API}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        // Backend returns specific message for driver accounts
         setError(data.error || 'Login failed. Please try again.');
         return;
       }
 
-      // Store user and navigate to dashboard
       setUser(data);
       navigate('/dashboard', { replace: true });
 
@@ -74,20 +72,21 @@ export default function LoginSignUp({ user, setUser }) {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email
+              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Username
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@fleetmonitor.com"
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="Enter your username"
                   className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
                 />
               </div>
             </div>
@@ -132,9 +131,9 @@ export default function LoginSignUp({ user, setUser }) {
           <div className="mt-6 pt-5 border-t border-slate-100">
             <p className="text-xs text-slate-400 mb-2 font-medium">Demo accounts:</p>
             <div className="space-y-1 text-xs text-slate-500">
-              <p><span className="font-medium text-slate-600">Head Admin:</span> headadmin@gmail.com</p>
-              <p><span className="font-medium text-slate-600">Fleet Manager:</span> fleetmgr@fleetsgsa.com</p>
-              <p><span className="font-medium text-slate-600">Manager:</span> ops@fleetsgsa.com</p>
+              <p><span className="font-medium text-slate-600">Head Admin:</span> headadmin</p>
+              <p><span className="font-medium text-slate-600">Fleet Manager:</span> fleetmgr</p>
+              <p><span className="font-medium text-slate-600">Manager:</span> opsmgr</p>
               <p className="text-slate-400 italic">All passwords: password123</p>
             </div>
           </div>

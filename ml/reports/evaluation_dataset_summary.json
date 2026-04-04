@@ -1,0 +1,31 @@
+{
+  "rows": 20412,
+  "trip_count": 79,
+  "anomalous_trip_count": 6,
+  "record_origin_counts": {
+    "public_geolife_route_derived_fuel": 19778,
+    "project_simulation_logs": 634
+  },
+  "augmentation_type_counts": {
+    "none": 20412
+  },
+  "label_source_counts": {
+    "clean_public_route": 19778,
+    "clean": 498,
+    "controlled_injection": 136
+  },
+  "trip_source_category_counts": {
+    "public_route": 19778,
+    "project_native": 634
+  },
+  "evaluation_subset_counts": {
+    "public_clean": 19778,
+    "project_native_clean": 498,
+    "project_native_injected": 136
+  },
+  "trip_length_band_counts": {
+    "medium": 31,
+    "short": 30,
+    "long": 18
+  }
+}

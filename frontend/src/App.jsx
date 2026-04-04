@@ -9,6 +9,7 @@ import Trucks      from './components/Trucks';
 import Alerts      from './components/Alerts';
 import Logs        from './components/Logs';
 import Analytics   from './components/Analytics';
+import Trips       from './components/Trips';
 import Settings    from './components/Settings';
 
 // Roles that can access the admin dashboard
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/alerts"    element={<Alerts />} />
           <Route path="/logs"      element={<Logs />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/trips"     element={<Trips />} />
 
           {/* Settings: head_admin only — route is completely hidden otherwise */}
           <Route element={<HeadAdminRoute user={user} />}>

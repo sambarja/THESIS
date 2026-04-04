@@ -1,5 +1,0 @@
-scenario,label,mp_pred,mp_score,inject_idx,reason
-normal_series,0,1,3.2255,,Discord at window 59: fuel changed -2.16% over 12 readings (z=3.23)
-theft_series,1,1,2.7627,65.0,Discord at window 65: fuel changed +22.89% over 12 readings (z=2.76)
-leak_series,1,0,0.2889,60.0,Latest pattern normal (z=0.29 < 2.0)
-sensor_spike,1,1,3.0595,72.0,Discord at window 62: fuel changed +13.03% over 12 readings (z=3.06)

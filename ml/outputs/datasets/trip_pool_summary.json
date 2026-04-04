@@ -1,0 +1,62 @@
+{
+  "cleaned_trip_count": 79,
+  "evaluation_trip_count": 79,
+  "project_native_trip_count": 12,
+  "public_source_trip_count": 67,
+  "anomaly_injected_trip_count": 6,
+  "clean_record_origin_counts": {
+    "public_geolife_route_derived_fuel": 19778,
+    "project_simulation_logs": 634
+  },
+  "evaluation_record_origin_counts": {
+    "public_geolife_route_derived_fuel": 19778,
+    "project_simulation_logs": 634
+  },
+  "geolife_summary": {
+    "trip_count": 67,
+    "row_count": 19778,
+    "mode_counts": {
+      "car": 34,
+      "bus": 18,
+      "taxi": 15
+    },
+    "duration_band_counts": {
+      "medium": 26,
+      "long": 23,
+      "short": 18
+    },
+    "user_count": 17,
+    "max_trips_from_single_public_user": 14,
+    "per_user_trip_count_top10": {
+      "062": 14,
+      "128": 14,
+      "085": 6,
+      "089": 6,
+      "115": 6,
+      "144": 5,
+      "101": 3,
+      "153": 3,
+      "010": 2,
+      "073": 1
+    },
+    "quality_constraints": {
+      "median_gap_sec_max": 30.0,
+      "p95_gap_sec_max": 120.0,
+      "gap_over_30_ratio_max": 0.3,
+      "max_trips_per_user": 14,
+      "max_trips_per_user_per_mode": 6
+    },
+    "selected_quality_score_summary": {
+      "count": 67.0,
+      "mean": 0.775101,
+      "std": 0.126995,
+      "min": 0.083352,
+      "25%": 0.745696,
+      "50%": 0.797002,
+      "75%": 0.843566,
+      "max": 0.961871
+    },
+    "source": "GeoLife Trajectories 1.3",
+    "license_note": "Microsoft Research GeoLife dataset is licensed for non-commercial academic use."
+  }
+}

@@ -1,0 +1,22 @@
+id,full_name,username,role,assigned_truck_id,is_active
+22222222-0000-0000-0000-000000000002,Juan Dela Cruz,juan,driver,11111111-0000-0000-0000-000000000001,True
+22222222-0000-0000-0000-000000000003,Maria Santos,maria,driver,11111111-0000-0000-0000-000000000002,True
+22222222-0000-0000-0000-000000000004,Roberto Garcia,roberto,driver,11111111-0000-0000-0000-000000000003,True
+22222222-0000-0000-0000-000000000005,Ana Reyes,ana,driver,11111111-0000-0000-0000-000000000004,True
+982a13d7-ecad-57f9-9d50-38cbc3b685cc,GeoLife Demo Driver 001,geolife_driver_001,driver,217797e1-bf7a-540f-ac1b-c0acf4e48920,True
+b96f282d-e144-5d4c-9a09-2bb26f9686d2,GeoLife Demo Driver 002,geolife_driver_002,driver,15397c93-5a79-5d40-8353-7fd856ef45b5,True
+310ff7cc-8984-5f5e-a749-90dfd00ec718,GeoLife Demo Driver 003,geolife_driver_003,driver,4589a912-7a8d-55e1-aff4-eb68a04f8701,True
+3cbdbf5d-4ef9-5428-99f1-f232dd2f4a54,GeoLife Demo Driver 004,geolife_driver_004,driver,72869a99-6df3-50f4-a7e2-da7e71d46e4b,True
+c4fec882-672f-5d6e-9dc6-18f71b21f8c7,GeoLife Demo Driver 005,geolife_driver_005,driver,bdd03877-a14a-57ce-8343-eef5d8916ab7,True
+5bc10cd0-6f4a-5847-a875-1d8b46a9427c,GeoLife Demo Driver 006,geolife_driver_006,driver,492f3c98-1003-52da-bac5-a19f8069f2db,True
+a75ad501-a855-555a-ba61-c7e03e649ad6,GeoLife Demo Driver 007,geolife_driver_007,driver,8a464ff4-dcb7-5dc5-bcb1-c395d418e4b7,True
+2557a6ef-f437-51fd-a66c-3170fe217f52,GeoLife Demo Driver 008,geolife_driver_008,driver,0355c38f-6474-5285-9295-75a7d97de1cf,True
+dd9f1bff-a686-59e2-a11e-1ba16036c15a,GeoLife Demo Driver 009,geolife_driver_009,driver,5401f086-e404-5a60-960b-8d4173d6252e,True
+dd46c47c-667b-5e24-bfbc-1d5a844b3b83,GeoLife Demo Driver 010,geolife_driver_010,driver,391c6fb8-80cf-5b57-81e6-5b7f488a51fd,True
+1addd89c-a9c2-5b66-801b-141b3e17359d,GeoLife Demo Driver 011,geolife_driver_011,driver,dca7efd9-46fa-5011-b2fc-e95055f7db60,True
+a7dd569d-3e98-5d58-8792-5a9987dbcb49,GeoLife Demo Driver 012,geolife_driver_012,driver,1fefaede-bcbb-5820-8c23-478d35d31bae,True
+4825455e-d263-583a-87f4-5cd1d4bf7605,GeoLife Demo Driver 013,geolife_driver_013,driver,60eb2403-f978-5c92-944e-66122563119c,True
+99d00eec-dbde-5140-916b-f008846a1a6d,GeoLife Demo Driver 014,geolife_driver_014,driver,f2b4119c-68a4-5ce6-9917-2047ad482460,True
+4c817102-f12f-5ac7-a344-4fdc0b8714ae,GeoLife Demo Driver 015,geolife_driver_015,driver,fdadee0d-21b3-5563-bcdf-b327a9d248ea,True
+17edbda9-35f6-5d90-ac0d-c6e2c3dde740,GeoLife Demo Driver 016,geolife_driver_016,driver,6e5a9f00-7459-56f0-8c79-cac6b2080f25,True
+eaadef38-8c1d-575b-9fc7-5fc378cc43d7,GeoLife Demo Driver 017,geolife_driver_017,driver,fee8bb21-6194-5e60-a295-875105e00dd3,True

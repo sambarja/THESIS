@@ -1,0 +1,63 @@
+{
+  "row_counts": {
+    "trucks": 3,
+    "users": 8,
+    "trip_sessions": 10,
+    "telemetry_logs": 428,
+    "alerts": 3
+  },
+  "truck_codes": [
+    {
+      "id": "11111111-0000-0000-0000-000000000003",
+      "truck_code": "TRK-003",
+      "status": "maintenance"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "truck_code": "TRK-002",
+      "status": "active"
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000004",
+      "truck_code": "TRK-004",
+      "status": "active"
+    }
+  ],
+  "user_roles": {
+    "driver": 5,
+    "fleet_manager": 2,
+    "head_admin": 1
+  },
+  "alert_types": {
+    "overspeed": 1,
+    "low_fuel": 1,
+    "maintenance": 1
+  },
+  "telemetry_by_truck": {
+    "11111111-0000-0000-0000-000000000002": 217,
+    "11111111-0000-0000-0000-000000000004": 211
+  },
+  "telemetry_null_counts": {
+    "id": 0,
+    "truck_id": 0,
+    "driver_id": 0,
+    "trip_id": 0,
+    "timestamp": 0,
+    "fuel_level": 0,
+    "lat": 0,
+    "lon": 0,
+    "speed": 0,
+    "odometer_km": 0,
+    "engine_status": 0,
+    "anomaly_flag": 5,
+    "anomaly_score": 428,
+    "model_source": 428,
+    "created_at": 0
+  },
+  "telemetry_trip_ids_missing_in_trip_sessions": [],
+  "trip_sessions_without_telemetry": [
+    "33333333-0000-0000-0000-000000000003",
+    "6d0c1dc6-111d-4769-b9dc-8cf0c8cac0d3",
+    "c9b96cdd-af5d-4add-b3e9-cde136187176"
+  ]
+}

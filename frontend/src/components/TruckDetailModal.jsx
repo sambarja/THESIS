@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Fuel, Activity, Route, Clock, AlertTriangle, Navigation } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, Fuel, Activity, Route, Clock, AlertTriangle, Navigation, RefreshCw } from 'lucide-react';
+import { format, formatDistanceStrict } from 'date-fns';
 import FleetMap from './FleetMap';
-import { mockAlerts, mockTelemetryLogs } from '../data/mockData';
+import { normalizeAlert, normalizeLog } from '../utils/api';
+import { useApi } from '../hooks/useApi';
 import { getStatusColor, getStatusLabel } from '../utils/statusColors';
+
+/** Convert fractional hours (e.g. 1.5) to "1h 30m" */
+function fmtHM(hours) {
+  if (hours == null || isNaN(hours)) return '—';
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 function Tab({ label, active, onClick, count }) {
   return (
@@ -21,11 +32,32 @@ function Tab({ label, active, onClick, count }) {
 
 export default function TruckDetailModal({ truck, onClose }) {
   const [activeTab, setActiveTab] = useState('map');
-  const truckAlerts = mockAlerts.filter(a => a.truckId === truck.id);
-  const truckLogs   = mockTelemetryLogs.filter(l => l.truckId === truck.id);
+  const [nowTs, setNowTs] = useState(Date.now());
 
-  // Render into document.body so it sits above Leaflet's internal z-index stack
-  // (Leaflet panes go up to z-index 1000; this modal uses z-[9999])
+  const { data: rawAlerts, loading: alertsLoading } = useApi(
+    `/alerts?truck_id=${truck.id}`,
+    { transform: arr => arr.map(normalizeAlert), pollInterval: 15_000 },
+  );
+
+  const { data: rawLogs, loading: logsLoading } = useApi(
+    `/trucks/${truck.id}/telemetry/history?limit=50`,
+    { transform: arr => arr.map(normalizeLog), pollInterval: 8_000 },
+  );
+
+  const truckAlerts = rawAlerts ?? [];
+  const truckLogs   = rawLogs   ?? [];
+  const liveTripActive = truck.tripStatus === 'active' || truck.tripStatus === 'paused';
+  const liveOperatingHours = liveTripActive && truck.tripStartTime
+    ? (nowTs - new Date(truck.tripStartTime).getTime()) / 3_600_000
+    : truck.operatingHours;
+
+  useEffect(() => {
+    if (!liveTripActive || !truck.tripStartTime) return;
+    setNowTs(Date.now());
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [liveTripActive, truck.tripStartTime]);
+
   return createPortal(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4" style={{ zIndex: 9999 }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -38,7 +70,7 @@ export default function TruckDetailModal({ truck, onClose }) {
                 {getStatusLabel(truck.status)}
               </span>
             </div>
-            <p className="text-sm text-slate-500">{truck.driver} • {truck.id}</p>
+            <p className="text-sm text-slate-500">{truck.driver} • {truck.code}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors ml-2 flex-shrink-0">
             <X className="w-5 h-5 text-slate-500" />
@@ -80,17 +112,24 @@ export default function TruckDetailModal({ truck, onClose }) {
                 <Clock className="w-4 h-4 text-orange-600" />
                 <span className="text-xs text-orange-700 font-medium">Op. Hours</span>
               </div>
-              <p className="text-2xl font-semibold text-orange-600">{truck.operatingHours}</p>
-              <p className="text-xs text-orange-600 mt-1">hours</p>
+              <p className="text-2xl font-semibold text-orange-600">{fmtHM(liveOperatingHours)}</p>
+              <p className="text-xs text-orange-600 mt-1">this trip</p>
             </div>
           </div>
 
           {/* Trip info */}
-          {truck.tripStatus === 'active' && truck.tripStartTime && (
+          {(truck.tripStatus === 'active' || truck.tripStatus === 'paused') && truck.tripStartTime && (
             <div className="bg-slate-50 rounded-xl p-4 mb-6 text-sm">
-              <p className="font-medium text-slate-900 mb-2">Current Trip</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-medium text-slate-900">Current Trip</p>
+                {truck.tripStatus === 'paused' && (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">Driver Resting</span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
-                <p>Started: <span className="text-slate-900">{format(new Date(truck.tripStartTime), 'MMM d, yyyy h:mm a')}</span></p>
+                <p>Started: <span className="text-slate-900">{format(new Date(truck.tripStartTime), 'MMM d, h:mm a')}</span></p>
+                <p>Elapsed: <span className="text-slate-900">{formatDistanceStrict(new Date(truck.tripStartTime), new Date(nowTs))}</span></p>
+                <p>Distance: <span className="text-slate-900">{truck.distance} km</span></p>
                 <p>Location: <span className="text-slate-900">{truck.position[0].toFixed(4)}, {truck.position[1].toFixed(4)}</span></p>
               </div>
             </div>
@@ -98,10 +137,11 @@ export default function TruckDetailModal({ truck, onClose }) {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-4 flex-wrap">
-            <Tab label="Map"         active={activeTab === 'map'}   onClick={() => setActiveTab('map')} />
-            <Tab label="Live Data"   active={activeTab === 'live'}  onClick={() => setActiveTab('live')} />
-            <Tab label="Alerts"      active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} count={truckAlerts.length} />
-            <Tab label="Logs"        active={activeTab === 'logs'}  onClick={() => setActiveTab('logs')} />
+            <Tab label="Map"       active={activeTab === 'map'}    onClick={() => setActiveTab('map')} />
+            <Tab label="Live Data" active={activeTab === 'live'}   onClick={() => setActiveTab('live')} />
+            <Tab label="Alerts"    active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')}
+              count={alertsLoading ? null : truckAlerts.length} />
+            <Tab label="Logs"      active={activeTab === 'logs'}   onClick={() => setActiveTab('logs')} />
           </div>
 
           {/* Tab content */}
@@ -134,7 +174,12 @@ export default function TruckDetailModal({ truck, onClose }) {
 
           {activeTab === 'alerts' && (
             <div className="space-y-3">
-              {truckAlerts.length === 0 ? (
+              {alertsLoading ? (
+                <div className="text-center py-10 text-slate-400">
+                  <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin opacity-40" />
+                  <p className="text-sm">Loading alerts…</p>
+                </div>
+              ) : truckAlerts.length === 0 ? (
                 <div className="text-center py-10 text-slate-400">
                   <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No alerts for this truck</p>
@@ -166,12 +211,17 @@ export default function TruckDetailModal({ truck, onClose }) {
 
           {activeTab === 'logs' && (
             <div className="space-y-2">
-              {truckLogs.length === 0 ? (
+              {logsLoading ? (
+                <div className="text-center py-10 text-slate-400">
+                  <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin opacity-40" />
+                  <p className="text-sm">Loading telemetry…</p>
+                </div>
+              ) : truckLogs.length === 0 ? (
                 <div className="text-center py-10 text-slate-400">
                   <Navigation className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No logs available</p>
                 </div>
-              ) : truckLogs.map((log) => (
+              ) : [...truckLogs].reverse().map((log) => (
                 <div key={log.id} className="bg-slate-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-slate-900">
