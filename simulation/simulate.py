@@ -1245,11 +1245,30 @@ def supa_insert(table, rows, chunk=400):
     inserted = 0
     for index in range(0, len(rows), chunk):
         batch = rows[index:index + chunk]
-        response = requests.post(url, headers=supa_headers(), json=batch, timeout=60)
-        if response.status_code not in (200, 201, 204):
-            raise RuntimeError(
-                f"Supabase insert failed for {table}: HTTP {response.status_code} {response.text[:240]}"
-            )
+        response = None
+        last_error = None
+        for attempt in range(1, 5):
+            try:
+                response = requests.post(url, headers=supa_headers(), json=batch, timeout=60)
+                if response.status_code in (200, 201, 204):
+                    last_error = None
+                    break
+                last_error = RuntimeError(
+                    f"HTTP {response.status_code} {response.text[:240]}"
+                )
+            except requests.RequestException as exc:
+                last_error = exc
+
+            if attempt < 4:
+                wait_seconds = min(10, 2 ** (attempt - 1))
+                print(
+                    f"[supabase] insert retry {attempt}/4 for {table}"
+                    f" batch {index // chunk + 1}: {last_error}. Waiting {wait_seconds}s..."
+                )
+                time.sleep(wait_seconds)
+
+        if last_error is not None:
+            raise RuntimeError(f"Supabase insert failed for {table}: {last_error}")
         inserted += len(batch)
     return inserted
 
@@ -1258,22 +1277,78 @@ def supa_rpc(function_name, payload):
     if not SUPABASE_URL or not SUPABASE_SVC_KEY:
         raise RuntimeError(f"SUPABASE_SERVICE_KEY not set for RPC {function_name}")
 
-    response = requests.post(
-        f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
-        headers=supa_headers(),
-        json=payload,
-        timeout=60,
-    )
-    if response.status_code not in (200, 201, 204):
-        raise RuntimeError(
-            f"Supabase RPC failed for {function_name}: HTTP {response.status_code} {response.text[:240]}"
-        )
+    response = None
+    last_error = None
+    for attempt in range(1, 5):
+        try:
+            response = requests.post(
+                f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
+                headers=supa_headers(),
+                json=payload,
+                timeout=60,
+            )
+            if response.status_code in (200, 201, 204):
+                last_error = None
+                break
+            last_error = RuntimeError(
+                f"HTTP {response.status_code} {response.text[:240]}"
+            )
+        except requests.RequestException as exc:
+            last_error = exc
+
+        if attempt < 4:
+            wait_seconds = min(10, 2 ** (attempt - 1))
+            print(
+                f"[supabase] rpc retry {attempt}/4 for {function_name}:"
+                f" {last_error}. Waiting {wait_seconds}s..."
+            )
+            time.sleep(wait_seconds)
+
+    if last_error is not None:
+        raise RuntimeError(f"Supabase RPC failed for {function_name}: {last_error}")
     if not response.content:
         return None
     try:
         return response.json()
     except ValueError:
         return None
+
+
+def supa_delete_where_in(table, column, values):
+    values = [str(value) for value in values if value]
+    if not values:
+        return 0
+    if not SUPABASE_URL or not SUPABASE_SVC_KEY:
+        raise RuntimeError(f"SUPABASE_SERVICE_KEY not set for delete on {table}")
+
+    quoted = ",".join(values)
+    response = requests.delete(
+        f"{SUPABASE_URL}/rest/v1/{table}?{column}=in.({quoted})",
+        headers=supa_headers(),
+        timeout=60,
+    )
+    if response.status_code not in (200, 204):
+        raise RuntimeError(
+            f"Supabase delete failed for {table}: HTTP {response.status_code} {response.text[:240]}"
+        )
+    return len(values)
+
+
+def cleanup_historical_bundle(trip_rows):
+    trip_ids = [row["id"] for row in trip_rows if row.get("id")]
+    if not trip_ids:
+        return
+
+    for table, column in (
+        ("trip_summaries", "trip_id"),
+        ("alerts", "trip_id"),
+        ("telemetry_logs", "trip_id"),
+        ("trip_sessions", "id"),
+    ):
+        try:
+            supa_delete_where_in(table, column, trip_ids)
+        except Exception as exc:
+            print(f"[backfill] cleanup warning for {table}: {exc}")
 
 
 def reset_db():
@@ -2239,117 +2314,187 @@ def run_historical_backfill(
         "summary_refresh_count": 0,
         "scenario_counts": {},
         "archive_result": None,
+        "failed_bundles": 0,
+        "errors": [],
+        "summary_refresh_errors": [],
     }
+
+    def write_backfill_artifacts():
+        markdown_lines = [
+            "# Historical Backfill Summary",
+            "",
+            f"- Date range: {summary['start_date']} to {summary['end_date']}",
+            f"- Seed: {summary['seed']}",
+            f"- Trips inserted: {summary['trip_count']}",
+            f"- Telemetry rows inserted: {summary['telemetry_count']}",
+            f"- Alerts inserted: {summary['alert_count']}",
+            f"- Trip summaries refreshed: {summary['summary_refresh_count']}",
+            f"- Failed bundles: {summary['failed_bundles']}",
+            "",
+            "## Scenario usage",
+            "",
+        ]
+        for template_name in sorted(summary["scenario_counts"]):
+            markdown_lines.append(f"- {template_name}: {summary['scenario_counts'][template_name]} bundle(s)")
+        markdown_lines.extend(["", "## Bundles", ""])
+        for bundle in summary["bundles"]:
+            status_note = f" | status={bundle['status']}" if bundle.get("status") else ""
+            error_note = f" | error={bundle['error']}" if bundle.get("error") else ""
+            markdown_lines.append(
+                f"- {bundle['date']} | {bundle['template']} | start={bundle['scenario_start']} |"
+                f" trips={bundle['trip_count']} | logs={bundle['telemetry_count']} | alerts={bundle['alert_count']}"
+                f"{status_note}{error_note}"
+            )
+
+        if summary["summary_refresh_errors"]:
+            markdown_lines.extend(["", "## Summary refresh warnings", ""])
+            for item in summary["summary_refresh_errors"]:
+                markdown_lines.append(f"- trip={item['trip_id']} | error={item['error']}")
+
+        if summary["errors"]:
+            markdown_lines.extend(["", "## Backfill errors", ""])
+            for item in summary["errors"]:
+                markdown_lines.append(
+                    f"- {item['date']} | {item['template']} | start={item['scenario_start']} | error={item['error']}"
+                )
+
+        logger.write_text("historical_backfill.md", "\n".join(markdown_lines) + "\n")
+        logger.write_text("historical_backfill.json", json.dumps(summary, indent=2))
 
     print(
         f"\n[backfill] Historical backfill from {summary['start_date']} to {summary['end_date']}"
         f" | bundles/day={min_bundles_per_day}-{max_bundles_per_day} | seed={seed}"
     )
 
-    for day in iter_backfill_dates(start_date, end_date):
-        day_states = build_backfill_day_states(rolling_odometer, rng)
-        bundle_count = choose_backfill_bundle_count(rng, day, min_bundles_per_day, max_bundles_per_day)
-        next_start_minute = rng.randint(5 * 60 + 30, 9 * 60 + 30)
+    try:
+        for day in iter_backfill_dates(start_date, end_date):
+            day_states = build_backfill_day_states(rolling_odometer, rng)
+            bundle_count = choose_backfill_bundle_count(rng, day, min_bundles_per_day, max_bundles_per_day)
+            next_start_minute = rng.randint(5 * 60 + 30, 9 * 60 + 30)
 
-        for _bundle_index in range(bundle_count):
-            template_name = rng.choice(HISTORICAL_TEMPLATE_SCENARIOS)
-            summary["scenario_counts"][template_name] = summary["scenario_counts"].get(template_name, 0) + 1
-            scenario_start_dt = datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ) + timedelta(minutes=next_start_minute)
-            prepared = prepare_scenario(template_name, thresholds, use_osrm, day_states)
+            for _bundle_index in range(bundle_count):
+                template_name = rng.choice(HISTORICAL_TEMPLATE_SCENARIOS)
+                summary["scenario_counts"][template_name] = summary["scenario_counts"].get(template_name, 0) + 1
+                scenario_start_dt = datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ) + timedelta(minutes=next_start_minute)
+                bundle_record = {
+                    "date": day.isoformat(),
+                    "template": template_name,
+                    "scenario_start": scenario_start_dt.isoformat(),
+                    "trip_count": 0,
+                    "telemetry_count": 0,
+                    "alert_count": 0,
+                    "status": "pending",
+                    "error": None,
+                }
+                trip_rows = []
+                telemetry_rows = []
+                alert_rows = []
+                bundle_end_dt = scenario_start_dt
 
-            trip_rows = []
-            telemetry_rows = []
-            alert_rows = []
-            bundle_end_dt = scenario_start_dt
+                try:
+                    prepared = prepare_scenario(template_name, thresholds, use_osrm, day_states)
 
-            for run in prepared["prepared_runs"]:
-                truck_code = run["truck_code"]
-                truck_state = day_states[truck_code]
-                for trip in run["prepared_trips"]:
-                    generated = simulate_historical_trip(trip, truck_state, template_name, scenario_start_dt, logger, rng)
-                    trip_rows.append(generated["trip_row"])
-                    telemetry_rows.extend(generated["telemetry_rows"])
-                    alert_rows.extend(generated["alert_rows"])
-                    truck_state = generated["final_state"]
-                    day_states[truck_code] = truck_state
-                    bundle_end_dt = max(bundle_end_dt, generated["trip_end_dt"])
+                    for run in prepared["prepared_runs"]:
+                        truck_code = run["truck_code"]
+                        truck_state = day_states[truck_code]
+                        for trip in run["prepared_trips"]:
+                            generated = simulate_historical_trip(trip, truck_state, template_name, scenario_start_dt, logger, rng)
+                            trip_rows.append(generated["trip_row"])
+                            telemetry_rows.extend(generated["telemetry_rows"])
+                            alert_rows.extend(generated["alert_rows"])
+                            truck_state = generated["final_state"]
+                            day_states[truck_code] = truck_state
+                            bundle_end_dt = max(bundle_end_dt, generated["trip_end_dt"])
 
-            if dry_run:
-                print(
-                    f"[backfill] [dry] {day.isoformat()} {template_name}"
-                    f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
+                    if dry_run:
+                        print(
+                            f"[backfill] [dry] {day.isoformat()} {template_name}"
+                            f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
+                        )
+                    else:
+                        supa_insert("trip_sessions", trip_rows)
+                        try:
+                            supa_insert("telemetry_logs", telemetry_rows)
+                            if alert_rows:
+                                supa_insert("alerts", alert_rows)
+                        except Exception:
+                            cleanup_historical_bundle(trip_rows)
+                            raise
+
+                        for row in trip_rows:
+                            try:
+                                supa_rpc("refresh_trip_summary", {"p_trip_id": row["id"]})
+                                summary["summary_refresh_count"] += 1
+                            except Exception as exc:
+                                summary["summary_refresh_errors"].append({
+                                    "trip_id": row["id"],
+                                    "error": str(exc),
+                                })
+                                print(f"[backfill] summary refresh warning for trip {row['id']}: {exc}")
+
+                        print(
+                            f"[backfill] {day.isoformat()} {template_name}"
+                            f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
+                        )
+
+                    summary["trip_count"] += len(trip_rows)
+                    summary["telemetry_count"] += len(telemetry_rows)
+                    summary["alert_count"] += len(alert_rows)
+                    bundle_record["trip_count"] = len(trip_rows)
+                    bundle_record["telemetry_count"] = len(telemetry_rows)
+                    bundle_record["alert_count"] = len(alert_rows)
+                    bundle_record["status"] = "completed"
+                except Exception as exc:
+                    summary["failed_bundles"] += 1
+                    bundle_record["status"] = "failed"
+                    bundle_record["error"] = str(exc)
+                    summary["errors"].append({
+                        "date": day.isoformat(),
+                        "template": template_name,
+                        "scenario_start": scenario_start_dt.isoformat(),
+                        "error": str(exc),
+                    })
+                    print(
+                        f"[backfill] ERROR {day.isoformat()} {template_name}"
+                        f" | start={scenario_start_dt.isoformat()} | {exc}"
+                    )
+                finally:
+                    summary["bundles"].append(bundle_record)
+                    write_backfill_artifacts()
+
+                next_start_minute = int(
+                    (bundle_end_dt - datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ)).total_seconds() / 60
+                ) + rng.randint(40, 120)
+
+            for truck_code, state in day_states.items():
+                rolling_odometer[truck_code] = round(state["odometer"], 1)
+
+        if not dry_run and summary["trip_count"] > 0:
+            try:
+                summary["archive_result"] = supa_rpc(
+                    "archive_ended_trip_logs",
+                    {
+                        "p_retention_days": int(archive_retention_days),
+                        "p_max_trips": max(summary["trip_count"] + 20, 200),
+                        "p_dry_run": False,
+                    },
                 )
-            else:
-                supa_insert("trip_sessions", trip_rows)
-                supa_insert("telemetry_logs", telemetry_rows)
-                if alert_rows:
-                    supa_insert("alerts", alert_rows)
-                for row in trip_rows:
-                    supa_rpc("refresh_trip_summary", {"p_trip_id": row["id"]})
-                    summary["summary_refresh_count"] += 1
-                print(
-                    f"[backfill] {day.isoformat()} {template_name}"
-                    f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
-                )
-
-            summary["trip_count"] += len(trip_rows)
-            summary["telemetry_count"] += len(telemetry_rows)
-            summary["alert_count"] += len(alert_rows)
-            summary["bundles"].append({
-                "date": day.isoformat(),
-                "template": template_name,
-                "scenario_start": scenario_start_dt.isoformat(),
-                "trip_count": len(trip_rows),
-                "telemetry_count": len(telemetry_rows),
-                "alert_count": len(alert_rows),
-            })
-
-            next_start_minute = int(
-                (bundle_end_dt - datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ)).total_seconds() / 60
-            ) + rng.randint(40, 120)
-
-        for truck_code, state in day_states.items():
-            rolling_odometer[truck_code] = round(state["odometer"], 1)
-
-    if not dry_run and summary["trip_count"] > 0:
-        summary["archive_result"] = supa_rpc(
-            "archive_ended_trip_logs",
-            {
-                "p_retention_days": int(archive_retention_days),
-                "p_max_trips": max(summary["trip_count"] + 20, 200),
-                "p_dry_run": False,
-            },
-        )
-
-    markdown_lines = [
-        "# Historical Backfill Summary",
-        "",
-        f"- Date range: {summary['start_date']} to {summary['end_date']}",
-        f"- Seed: {summary['seed']}",
-        f"- Trips inserted: {summary['trip_count']}",
-        f"- Telemetry rows inserted: {summary['telemetry_count']}",
-        f"- Alerts inserted: {summary['alert_count']}",
-        f"- Trip summaries refreshed: {summary['summary_refresh_count']}",
-        "",
-        "## Scenario usage",
-        "",
-    ]
-    for template_name in sorted(summary["scenario_counts"]):
-        markdown_lines.append(f"- {template_name}: {summary['scenario_counts'][template_name]} bundle(s)")
-    markdown_lines.extend(["", "## Bundles", ""])
-    for bundle in summary["bundles"]:
-        markdown_lines.append(
-            f"- {bundle['date']} | {bundle['template']} | start={bundle['scenario_start']} |"
-            f" trips={bundle['trip_count']} | logs={bundle['telemetry_count']} | alerts={bundle['alert_count']}"
-        )
-
-    logger.write_text("historical_backfill.md", "\n".join(markdown_lines) + "\n")
-    logger.write_text("historical_backfill.json", json.dumps(summary, indent=2))
-    logger.close()
+            except Exception as exc:
+                summary["errors"].append({
+                    "date": end_date.isoformat(),
+                    "template": "archive",
+                    "scenario_start": None,
+                    "error": str(exc),
+                })
+                print(f"[backfill] archive warning: {exc}")
+    finally:
+        write_backfill_artifacts()
+        logger.close()
 
     print(
         f"\n[backfill] Completed | trips={summary['trip_count']}"
         f" | logs={summary['telemetry_count']} | alerts={summary['alert_count']}"
+        f" | failed_bundles={summary['failed_bundles']}"
     )
     if summary["archive_result"] is not None:
         print(f"[backfill] Archive RPC result: {summary['archive_result']}")

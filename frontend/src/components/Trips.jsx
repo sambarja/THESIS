@@ -41,8 +41,9 @@ function fmtDuration(start, end) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function buildSummaryPath(days, truckId) {
-  const p = new URLSearchParams({ days: String(days), limit: '200' });
+function buildSummaryPath(period, truckId) {
+  const p = new URLSearchParams({ limit: '200' });
+  if (period && period !== 'all') p.set('days', String(period));
   if (truckId && truckId !== 'all') p.set('truck_id', truckId);
   return `/trips/summaries?${p.toString()}`;
 }
@@ -259,7 +260,7 @@ function TripDetail({ trip, route, routeLoading, onBack }) {
 
 // ── Main Trips Page ───────────────────────────────────────────────────────────
 export default function Trips() {
-  const [days, setDays]               = useState(30);
+  const [period, setPeriod]           = useState('90');
   const [truckId, setTruckId]         = useState('all');
   const [driverSearch, setDriverSearch] = useState('');
   const [selectedTrip, setSelectedTrip] = useState(null);
@@ -267,7 +268,7 @@ export default function Trips() {
   const [routeLoading, setRouteLoading] = useState(false);
 
   // Trip summaries — poll every 30 s so newly-completed trips appear automatically
-  const summariesApi = useApi(buildSummaryPath(days, truckId), {
+  const summariesApi = useApi(buildSummaryPath(period, truckId), {
     transform: payload => {
       const p = payload && typeof payload === 'object' ? payload : {};
       return ensureArray(p.items).map(normalizeTripSummary);
@@ -355,12 +356,16 @@ export default function Trips() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
         <select
-          value={days}
-          onChange={e => setDays(Number(e.target.value))}
+          value={period}
+          onChange={e => setPeriod(e.target.value)}
           className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+          <option value={180}>Last 180 days</option>
+          <option value={365}>Last 365 days</option>
+          <option value="all">All history</option>
         </select>
 
         <select
@@ -434,7 +439,7 @@ export default function Trips() {
                       <Route className="w-8 h-8 opacity-30" />
                       <span className="text-sm">
                         {summaries.length === 0
-                          ? 'No completed trips found for this period.'
+                          ? 'No completed trips found for this history range.'
                           : 'No trips match the current driver filter.'}
                       </span>
                     </div>
