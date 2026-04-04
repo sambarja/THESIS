@@ -64,6 +64,11 @@ GPS_INTERVAL_S = 5
 LOG_DIR       = os.path.join(os.path.dirname(__file__), "logs")
 STATE_FILE    = os.path.join(os.path.dirname(__file__), "truck_state.json")
 os.makedirs(LOG_DIR, exist_ok=True)
+MANILA_TZ = timezone(timedelta(hours=8))
+HISTORICAL_SCENARIO = "historical_backfill"
+HISTORICAL_TEMPLATE_SCENARIOS = ["fleet", "anomaly", "rest_alert", "handover", "full_demo"]
+DEFAULT_BACKFILL_START = f"{datetime.now(MANILA_TZ).year}-02-01"
+DEFAULT_BACKFILL_END = f"{datetime.now(MANILA_TZ).year}-03-31"
 
 # ── Dispatch hub ────────────────────────────────────────────────────────────────
 HUB       = (14.5878, 120.9830)
@@ -1230,9 +1235,51 @@ def supa_patch_all(table, body):
     )
 
 
+def supa_insert(table, rows, chunk=400):
+    if not rows:
+        return 0
+    if not SUPABASE_URL or not SUPABASE_SVC_KEY:
+        raise RuntimeError(f"SUPABASE_SERVICE_KEY not set for {table}")
+
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    inserted = 0
+    for index in range(0, len(rows), chunk):
+        batch = rows[index:index + chunk]
+        response = requests.post(url, headers=supa_headers(), json=batch, timeout=60)
+        if response.status_code not in (200, 201, 204):
+            raise RuntimeError(
+                f"Supabase insert failed for {table}: HTTP {response.status_code} {response.text[:240]}"
+            )
+        inserted += len(batch)
+    return inserted
+
+
+def supa_rpc(function_name, payload):
+    if not SUPABASE_URL or not SUPABASE_SVC_KEY:
+        raise RuntimeError(f"SUPABASE_SERVICE_KEY not set for RPC {function_name}")
+
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/rpc/{function_name}",
+        headers=supa_headers(),
+        json=payload,
+        timeout=60,
+    )
+    if response.status_code not in (200, 201, 204):
+        raise RuntimeError(
+            f"Supabase RPC failed for {function_name}: HTTP {response.status_code} {response.text[:240]}"
+        )
+    if not response.content:
+        return None
+    try:
+        return response.json()
+    except ValueError:
+        return None
+
+
 def reset_db():
     print("\n[reset] Clearing operational data...")
     supa_delete("telemetry_logs")
+    supa_delete("archived_telemetry_logs")
     supa_delete("alerts")
     supa_delete("trip_summaries")
     supa_delete("trip_sessions")
@@ -1959,6 +2006,355 @@ def run_truck_sequence(run, scenario_started_at, logger, stop_event, dry_run, tr
 # SIMULATION ORCHESTRATION
 # ══════════════════════════════════════════════════════════════════════════════
 
+def parse_backfill_date(value, label):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD format") from exc
+
+
+def iter_backfill_dates(start_date, end_date):
+    current = start_date
+    while current <= end_date:
+        yield current
+        current += timedelta(days=1)
+
+
+def build_backfill_day_states(rolling_odometer, rng):
+    states = {}
+    for truck_code in TRUCKS:
+        states[truck_code] = {
+            "fuel": round(rng.uniform(78, 96), 2),
+            "odometer": round(rolling_odometer.get(truck_code, rng.uniform(16000, 52000)), 1),
+            "lat": HUB[0],
+            "lon": HUB[1],
+            "location_label": HUB_LABEL,
+        }
+    return states
+
+
+def choose_backfill_bundle_count(rng, day, min_bundles, max_bundles):
+    min_bundles = max(1, int(min_bundles))
+    max_bundles = max(min_bundles, int(max_bundles))
+    if day.weekday() >= 5 and max_bundles > min_bundles:
+        max_bundles -= 1
+    return rng.randint(min_bundles, max_bundles)
+
+
+def build_historical_alert_rows(prepared_trip, trip_id, trip_start_dt, trip_end_dt, final_fuel):
+    rows = []
+
+    def add_alert(minute_offset, alert_type, message, severity):
+        timestamp = (trip_start_dt + timedelta(minutes=minute_offset)).isoformat()
+        rows.append({
+            "id": str(uuid.uuid4()),
+            "truck_id": prepared_trip["truck_id"],
+            "driver_id": prepared_trip["driver_id"],
+            "trip_id": trip_id,
+            "timestamp": timestamp,
+            "alert_type": alert_type,
+            "message": message,
+            "severity": severity,
+            "is_resolved": True,
+            "created_at": timestamp,
+        })
+
+    if prepared_trip["rest_expected"] and prepared_trip["rest_minute"] is not None:
+        add_alert(
+            prepared_trip["rest_minute"],
+            "rest_alert",
+            f"Historical backfill: rest threshold reached on {prepared_trip['truck_code']}.",
+            "medium",
+        )
+
+    if prepared_trip["maintenance_expected"] and prepared_trip["maintenance_minute"] is not None:
+        add_alert(
+            prepared_trip["maintenance_minute"],
+            "maintenance",
+            f"Historical backfill: maintenance threshold reached on {prepared_trip['truck_code']}.",
+            "medium",
+        )
+
+    if prepared_trip["anomaly_expected"] and prepared_trip["event_minute"] is not None:
+        event_label = {
+            "theft": "sudden ECU fuel drop",
+            "leak": "gradual fuel leak",
+            "overspeed": "overspeed",
+        }.get(prepared_trip["event"], "anomaly")
+        add_alert(
+            prepared_trip["event_minute"],
+            "fuel_anomaly" if prepared_trip["event"] != "overspeed" else "overspeed",
+            f"Historical backfill: {event_label} detected on {prepared_trip['truck_code']}.",
+            "high",
+        )
+
+    if final_fuel <= 20:
+        low_fuel_time = max(trip_start_dt + timedelta(minutes=1), trip_end_dt - timedelta(minutes=1))
+        rows.append({
+            "id": str(uuid.uuid4()),
+            "truck_id": prepared_trip["truck_id"],
+            "driver_id": prepared_trip["driver_id"],
+            "trip_id": trip_id,
+            "timestamp": low_fuel_time.isoformat(),
+            "alert_type": "low_fuel",
+            "message": f"Historical backfill: low fuel observed on {prepared_trip['truck_code']}.",
+            "severity": "medium",
+            "is_resolved": True,
+            "created_at": low_fuel_time.isoformat(),
+        })
+
+    return rows
+
+
+def simulate_historical_trip(prepared_trip, truck_state, scenario_name, scenario_start_dt, logger, rng):
+    simulator = TripSimulator(prepared_trip, truck_state)
+    simulator.trip_id = str(uuid.uuid4())
+
+    trip_start_dt = scenario_start_dt + timedelta(minutes=prepared_trip["start_offset_min"])
+    trip_end_dt = scenario_start_dt + timedelta(minutes=prepared_trip["end_offset_min"])
+    trip_start_odometer = truck_state["odometer"]
+    telemetry_rows = []
+
+    while True:
+        if simulator.should_pause_now():
+            simulator.pause_active = True
+            simulator.pause_started = True
+
+        if simulator.should_resume_now():
+            simulator.pause_active = False
+            simulator.pause_resumed = True
+
+        payload = simulator.tick()
+        event_ts = trip_start_dt + timedelta(seconds=simulator.wall_tick * GPS_INTERVAL_S)
+        anomaly_flag = bool(payload["_anomaly"])
+        telemetry_rows.append({
+            "id": str(uuid.uuid4()),
+            "truck_id": prepared_trip["truck_id"],
+            "driver_id": prepared_trip["driver_id"],
+            "trip_id": simulator.trip_id,
+            "timestamp": event_ts.isoformat(),
+            "fuel_level": round(payload["fuel_level"], 2),
+            "lat": round(payload["lat"], 6),
+            "lon": round(payload["lon"], 6),
+            "speed": round(payload["speed"], 1),
+            "odometer_km": round(payload["odometer_km"], 1),
+            "engine_status": payload["engine_status"],
+            "anomaly_flag": anomaly_flag,
+            "anomaly_score": round(rng.uniform(0.76, 0.95), 3) if anomaly_flag else None,
+            "model_source": "combined" if anomaly_flag else None,
+            "created_at": event_ts.isoformat(),
+        })
+
+        logger.log({
+            "ts": event_ts.isoformat(),
+            "scenario": scenario_name,
+            "truck": prepared_trip["truck_code"],
+            "driver": prepared_trip["driver"],
+            "trip_label": prepared_trip["trip_label"],
+            "trip_id": str(simulator.trip_id)[:8],
+            "fuel": payload["fuel_level"],
+            "speed": payload["speed"],
+            "lat": payload["lat"],
+            "lon": payload["lon"],
+            "odometer": payload["odometer_km"],
+            "engine_status": payload["engine_status"],
+            "anomaly": anomaly_flag,
+            "latency_ms": 0,
+        })
+
+        if simulator.finished:
+            break
+
+    trip_row = {
+        "id": simulator.trip_id,
+        "truck_id": prepared_trip["truck_id"],
+        "driver_id": prepared_trip["driver_id"],
+        "start_time": trip_start_dt.isoformat(),
+        "end_time": trip_end_dt.isoformat(),
+        "trip_status": "ended",
+        "start_lat": truck_state["lat"],
+        "start_lon": truck_state["lon"],
+        "end_lat": round(simulator.lat, 6),
+        "end_lon": round(simulator.lon, 6),
+        "distance_km": round(max(0.0, simulator.odometer - trip_start_odometer), 1),
+        "operating_hours": round(prepared_trip["duration_minutes_total"] / 60.0, 2),
+        "created_at": trip_start_dt.isoformat(),
+    }
+
+    return {
+        "trip_row": trip_row,
+        "telemetry_rows": telemetry_rows,
+        "alert_rows": build_historical_alert_rows(
+            prepared_trip,
+            simulator.trip_id,
+            trip_start_dt,
+            trip_end_dt,
+            simulator.fuel,
+        ),
+        "trip_id": simulator.trip_id,
+        "final_state": {
+            "fuel": simulator.fuel,
+            "odometer": simulator.odometer,
+            "lat": simulator.lat,
+            "lon": simulator.lon,
+            "location_label": prepared_trip["destination_label"],
+        },
+        "trip_end_dt": trip_end_dt,
+    }
+
+
+def run_historical_backfill(
+    start_date_str,
+    end_date_str,
+    use_osrm,
+    dry_run,
+    min_bundles_per_day,
+    max_bundles_per_day,
+    seed,
+    archive_retention_days,
+):
+    start_date = parse_backfill_date(start_date_str, "backfill start date")
+    end_date = parse_backfill_date(end_date_str, "backfill end date")
+    if end_date < start_date:
+        raise ValueError("backfill end date must be on or after the start date")
+
+    thresholds = get_thresholds()
+    rng = random.Random(seed)
+    logger = SimLogger(HISTORICAL_SCENARIO)
+    rolling_odometer = {
+        truck_code: round(rng.uniform(16000, 52000), 1)
+        for truck_code in TRUCKS
+    }
+
+    summary = {
+        "mode": HISTORICAL_SCENARIO,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "seed": seed,
+        "thresholds": thresholds,
+        "bundles": [],
+        "trip_count": 0,
+        "telemetry_count": 0,
+        "alert_count": 0,
+        "summary_refresh_count": 0,
+        "scenario_counts": {},
+        "archive_result": None,
+    }
+
+    print(
+        f"\n[backfill] Historical backfill from {summary['start_date']} to {summary['end_date']}"
+        f" | bundles/day={min_bundles_per_day}-{max_bundles_per_day} | seed={seed}"
+    )
+
+    for day in iter_backfill_dates(start_date, end_date):
+        day_states = build_backfill_day_states(rolling_odometer, rng)
+        bundle_count = choose_backfill_bundle_count(rng, day, min_bundles_per_day, max_bundles_per_day)
+        next_start_minute = rng.randint(5 * 60 + 30, 9 * 60 + 30)
+
+        for _bundle_index in range(bundle_count):
+            template_name = rng.choice(HISTORICAL_TEMPLATE_SCENARIOS)
+            summary["scenario_counts"][template_name] = summary["scenario_counts"].get(template_name, 0) + 1
+            scenario_start_dt = datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ) + timedelta(minutes=next_start_minute)
+            prepared = prepare_scenario(template_name, thresholds, use_osrm, day_states)
+
+            trip_rows = []
+            telemetry_rows = []
+            alert_rows = []
+            bundle_end_dt = scenario_start_dt
+
+            for run in prepared["prepared_runs"]:
+                truck_code = run["truck_code"]
+                truck_state = day_states[truck_code]
+                for trip in run["prepared_trips"]:
+                    generated = simulate_historical_trip(trip, truck_state, template_name, scenario_start_dt, logger, rng)
+                    trip_rows.append(generated["trip_row"])
+                    telemetry_rows.extend(generated["telemetry_rows"])
+                    alert_rows.extend(generated["alert_rows"])
+                    truck_state = generated["final_state"]
+                    day_states[truck_code] = truck_state
+                    bundle_end_dt = max(bundle_end_dt, generated["trip_end_dt"])
+
+            if dry_run:
+                print(
+                    f"[backfill] [dry] {day.isoformat()} {template_name}"
+                    f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
+                )
+            else:
+                supa_insert("trip_sessions", trip_rows)
+                supa_insert("telemetry_logs", telemetry_rows)
+                if alert_rows:
+                    supa_insert("alerts", alert_rows)
+                for row in trip_rows:
+                    supa_rpc("refresh_trip_summary", {"p_trip_id": row["id"]})
+                    summary["summary_refresh_count"] += 1
+                print(
+                    f"[backfill] {day.isoformat()} {template_name}"
+                    f" | trips={len(trip_rows)} | logs={len(telemetry_rows)} | alerts={len(alert_rows)}"
+                )
+
+            summary["trip_count"] += len(trip_rows)
+            summary["telemetry_count"] += len(telemetry_rows)
+            summary["alert_count"] += len(alert_rows)
+            summary["bundles"].append({
+                "date": day.isoformat(),
+                "template": template_name,
+                "scenario_start": scenario_start_dt.isoformat(),
+                "trip_count": len(trip_rows),
+                "telemetry_count": len(telemetry_rows),
+                "alert_count": len(alert_rows),
+            })
+
+            next_start_minute = int(
+                (bundle_end_dt - datetime(day.year, day.month, day.day, tzinfo=MANILA_TZ)).total_seconds() / 60
+            ) + rng.randint(40, 120)
+
+        for truck_code, state in day_states.items():
+            rolling_odometer[truck_code] = round(state["odometer"], 1)
+
+    if not dry_run and summary["trip_count"] > 0:
+        summary["archive_result"] = supa_rpc(
+            "archive_ended_trip_logs",
+            {
+                "p_retention_days": int(archive_retention_days),
+                "p_max_trips": max(summary["trip_count"] + 20, 200),
+                "p_dry_run": False,
+            },
+        )
+
+    markdown_lines = [
+        "# Historical Backfill Summary",
+        "",
+        f"- Date range: {summary['start_date']} to {summary['end_date']}",
+        f"- Seed: {summary['seed']}",
+        f"- Trips inserted: {summary['trip_count']}",
+        f"- Telemetry rows inserted: {summary['telemetry_count']}",
+        f"- Alerts inserted: {summary['alert_count']}",
+        f"- Trip summaries refreshed: {summary['summary_refresh_count']}",
+        "",
+        "## Scenario usage",
+        "",
+    ]
+    for template_name in sorted(summary["scenario_counts"]):
+        markdown_lines.append(f"- {template_name}: {summary['scenario_counts'][template_name]} bundle(s)")
+    markdown_lines.extend(["", "## Bundles", ""])
+    for bundle in summary["bundles"]:
+        markdown_lines.append(
+            f"- {bundle['date']} | {bundle['template']} | start={bundle['scenario_start']} |"
+            f" trips={bundle['trip_count']} | logs={bundle['telemetry_count']} | alerts={bundle['alert_count']}"
+        )
+
+    logger.write_text("historical_backfill.md", "\n".join(markdown_lines) + "\n")
+    logger.write_text("historical_backfill.json", json.dumps(summary, indent=2))
+    logger.close()
+
+    print(
+        f"\n[backfill] Completed | trips={summary['trip_count']}"
+        f" | logs={summary['telemetry_count']} | alerts={summary['alert_count']}"
+    )
+    if summary["archive_result"] is not None:
+        print(f"[backfill] Archive RPC result: {summary['archive_result']}")
+
+
 def run_simulation(scenario_name, use_osrm, dry_run, print_rundown_only, force_hub=False):
     if not dry_run and not print_rundown_only and not wait_for_backend():
         return
@@ -2044,14 +2440,18 @@ def run_simulation(scenario_name, use_osrm, dry_run, print_rundown_only, force_h
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
-    scenario_choices = sorted(SCENARIO_DEFS.keys())
+    scenario_choices = sorted(set(SCENARIO_DEFS.keys()) | {HISTORICAL_SCENARIO})
 
     parser = argparse.ArgumentParser(
         description="Fleet Simulation v6 — thesis IoT fleet demo",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="\n".join([
             "Available scenarios:",
-            *[f"  {name:<18} {SCENARIO_DEFS[name]['description'][:70]}" for name in scenario_choices],
+            *[
+                f"  {name:<18} "
+                f"{(SCENARIO_DEFS.get(name) or {'description': 'Generate completed historical trips directly in Supabase.'})['description'][:70]}"
+                for name in scenario_choices
+            ],
         ]),
     )
     parser.add_argument(
@@ -2100,12 +2500,46 @@ def main():
         action="store_true",
         help="Print scenario rundown without running the live simulation",
     )
+    parser.add_argument(
+        "--backfill-start",
+        default=DEFAULT_BACKFILL_START,
+        help=f"Historical backfill start date YYYY-MM-DD (default: {DEFAULT_BACKFILL_START})",
+    )
+    parser.add_argument(
+        "--backfill-end",
+        default=DEFAULT_BACKFILL_END,
+        help=f"Historical backfill end date YYYY-MM-DD (default: {DEFAULT_BACKFILL_END})",
+    )
+    parser.add_argument(
+        "--backfill-min-bundles-per-day",
+        type=int,
+        default=1,
+        help="Minimum historical scenario bundles to generate per day (default: 1)",
+    )
+    parser.add_argument(
+        "--backfill-max-bundles-per-day",
+        type=int,
+        default=2,
+        help="Maximum historical scenario bundles to generate per day (default: 2)",
+    )
+    parser.add_argument(
+        "--backfill-seed",
+        type=int,
+        default=20260405,
+        help="Random seed for historical backfill reproducibility",
+    )
+    parser.add_argument(
+        "--backfill-retention-days",
+        type=int,
+        default=30,
+        help="Retention threshold passed to archive_ended_trip_logs after backfill (default: 30)",
+    )
     args = parser.parse_args()
 
     if args.list_scenarios:
         print("\nAvailable simulation scenarios:\n")
         for name in scenario_choices:
-            desc = SCENARIO_DEFS[name]["description"]
+            desc = (SCENARIO_DEFS.get(name) or {"description": "Generate completed historical trips directly in Supabase."})["description"]
             print(f"  {name:<18} {desc[:80]}")
         print()
         sys.exit(0)
@@ -2121,6 +2555,19 @@ def main():
 
     if args.reset:
         reset_db()
+
+    if args.scenario == HISTORICAL_SCENARIO:
+        run_historical_backfill(
+            start_date_str=args.backfill_start,
+            end_date_str=args.backfill_end,
+            use_osrm=not args.no_osrm,
+            dry_run=args.dry_run,
+            min_bundles_per_day=args.backfill_min_bundles_per_day,
+            max_bundles_per_day=args.backfill_max_bundles_per_day,
+            seed=args.backfill_seed,
+            archive_retention_days=args.backfill_retention_days,
+        )
+        return
 
     run_simulation(
         scenario_name=args.scenario,

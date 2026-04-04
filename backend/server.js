@@ -808,16 +808,30 @@ app.get('/trips/:id', requireDashboard, async (req, res) => {
 
 // GET /trips/:id/route — GPS polyline for a trip
 app.get('/trips/:id/route', requireDashboard, async (req, res) => {
-  const { data, error } = await supabase
-    .from('telemetry_logs')
-    .select('lat, lon, fuel_level, speed, timestamp')
-    .eq('trip_id', req.params.id)
-    .not('lat', 'is', null)
-    .not('lon', 'is', null)
-    .order('timestamp', { ascending: true });
+  const [liveRes, archivedRes] = await Promise.all([
+    supabase
+      .from('telemetry_logs')
+      .select('lat, lon, fuel_level, speed, timestamp')
+      .eq('trip_id', req.params.id)
+      .not('lat', 'is', null)
+      .not('lon', 'is', null)
+      .order('timestamp', { ascending: true }),
+    supabase
+      .from('archived_telemetry_logs')
+      .select('lat, lon, fuel_level, speed, timestamp')
+      .eq('trip_id', req.params.id)
+      .not('lat', 'is', null)
+      .not('lon', 'is', null)
+      .order('timestamp', { ascending: true }),
+  ]);
 
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
+  if (liveRes.error) return res.status(400).json({ error: liveRes.error.message });
+  if (archivedRes.error) return res.status(400).json({ error: archivedRes.error.message });
+
+  const merged = [...(liveRes.data ?? []), ...(archivedRes.data ?? [])]
+    .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+
+  res.json(merged);
 });
 
 // POST /trip/start — start a new trip
