@@ -1,0 +1,1 @@
+timestamp,truck_id,trip_id,fuel_level,speed,odometer_km,lat,lon,latency_ms,is_anomaly,anomaly_type
