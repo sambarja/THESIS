@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment variables
+backend/.env
+**/.env.local
+**/.env.*.local
+
+# Large ML data files
+ml/data/*.zip
+ml/data/*.csv
+ml/data/epa_extracted/
+ml/data/obd2_kit/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Simulation logs
+simulation/logs/
+
+# OS
+.DS_Store
+Thumbs.db
