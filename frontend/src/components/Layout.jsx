@@ -187,7 +187,7 @@ export default function Layout({ user, setUser }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto isolate">
           <Outlet />
         </main>
       </div>
