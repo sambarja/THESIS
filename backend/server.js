@@ -788,6 +788,64 @@ app.get('/trucks/:id/trips', requireDashboard, async (req, res) => {
 // TRIPS
 // ─────────────────────────────────────────────────────────────
 
+// GET /trips/summaries — MUST be defined before /trips/:id to prevent route shadowing
+app.get('/trips/summaries', requireDashboard, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit ?? '200'), 1000);
+  const dateFrom = req.query.days
+    ? new Date(Date.now() - Math.min(parseInt(req.query.days, 10), 3650) * 86400000).toISOString()
+    : parseDateStart(req.query.date_from);
+  const dateTo = parseDateEnd(req.query.date_to);
+
+  let query = supabase
+    .from('trip_summaries')
+    .select('*')
+    .order('end_time', { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (req.query.truck_id) query = query.eq('truck_id', req.query.truck_id);
+  if (req.query.driver_id) query = query.eq('driver_id', req.query.driver_id);
+  if (req.query.trip_id) query = query.eq('trip_id', req.query.trip_id);
+  if (dateFrom) query = query.gte('start_time', dateFrom);
+  if (dateTo) query = query.lte('end_time', dateTo);
+
+  const { data, error } = await query;
+  if (error) return res.status(400).json({ error: error.message });
+
+  const rows = data ?? [];
+  const totals = rows.reduce((acc, row) => {
+    acc.total_distance_km += Number(row.total_distance_km ?? 0);
+    acc.total_operating_hours += Number(row.total_operating_hours ?? 0);
+    acc.total_alerts += Number(row.total_alerts ?? 0);
+    acc.total_anomalies += Number(row.total_anomalies ?? 0);
+    if (row.average_fuel_level != null) {
+      acc.average_fuel_total += Number(row.average_fuel_level);
+      acc.average_fuel_count += 1;
+    }
+    return acc;
+  }, {
+    total_distance_km: 0,
+    total_operating_hours: 0,
+    total_alerts: 0,
+    total_anomalies: 0,
+    average_fuel_total: 0,
+    average_fuel_count: 0,
+  });
+
+  res.json({
+    items: rows,
+    count: rows.length,
+    totals: {
+      total_distance_km: +totals.total_distance_km.toFixed(1),
+      total_operating_hours: +totals.total_operating_hours.toFixed(2),
+      total_alerts: totals.total_alerts,
+      total_anomalies: totals.total_anomalies,
+      average_fuel_level: totals.average_fuel_count
+        ? +(totals.average_fuel_total / totals.average_fuel_count).toFixed(2)
+        : null,
+    },
+  });
+});
+
 // GET /trips/:id — single trip details
 app.get('/trips/:id', requireDashboard, async (req, res) => {
   const { data: trip, error } = await supabase
@@ -1163,63 +1221,6 @@ app.post('/maintenance/archive-logs', requireHeadAdmin, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-app.get('/trips/summaries', requireDashboard, async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit ?? '200'), 1000);
-  const dateFrom = req.query.days
-    ? new Date(Date.now() - Math.min(parseInt(req.query.days, 10), 3650) * 86400000).toISOString()
-    : parseDateStart(req.query.date_from);
-  const dateTo = parseDateEnd(req.query.date_to);
-
-  let query = supabase
-    .from('trip_summaries')
-    .select('*')
-    .order('end_time', { ascending: false, nullsFirst: false })
-    .limit(limit);
-
-  if (req.query.truck_id) query = query.eq('truck_id', req.query.truck_id);
-  if (req.query.driver_id) query = query.eq('driver_id', req.query.driver_id);
-  if (req.query.trip_id) query = query.eq('trip_id', req.query.trip_id);
-  if (dateFrom) query = query.gte('start_time', dateFrom);
-  if (dateTo) query = query.lte('end_time', dateTo);
-
-  const { data, error } = await query;
-  if (error) return res.status(400).json({ error: error.message });
-
-  const rows = data ?? [];
-  const totals = rows.reduce((acc, row) => {
-    acc.total_distance_km += Number(row.total_distance_km ?? 0);
-    acc.total_operating_hours += Number(row.total_operating_hours ?? 0);
-    acc.total_alerts += Number(row.total_alerts ?? 0);
-    acc.total_anomalies += Number(row.total_anomalies ?? 0);
-    if (row.average_fuel_level != null) {
-      acc.average_fuel_total += Number(row.average_fuel_level);
-      acc.average_fuel_count += 1;
-    }
-    return acc;
-  }, {
-    total_distance_km: 0,
-    total_operating_hours: 0,
-    total_alerts: 0,
-    total_anomalies: 0,
-    average_fuel_total: 0,
-    average_fuel_count: 0,
-  });
-
-  res.json({
-    items: rows,
-    count: rows.length,
-    totals: {
-      total_distance_km: +totals.total_distance_km.toFixed(1),
-      total_operating_hours: +totals.total_operating_hours.toFixed(2),
-      total_alerts: totals.total_alerts,
-      total_anomalies: totals.total_anomalies,
-      average_fuel_level: totals.average_fuel_count
-        ? +(totals.average_fuel_total / totals.average_fuel_count).toFixed(2)
-        : null,
-    },
-  });
 });
 
 // ─────────────────────────────────────────────────────────────

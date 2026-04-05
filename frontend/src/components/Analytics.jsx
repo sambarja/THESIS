@@ -29,7 +29,7 @@ function safeNumber(value, fallback = 0) {
 
 
 export default function Analytics() {
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(90);
   const [truckId, setTruckId] = useState('all');
 
   const summariesApi = useApi(buildSummaryPath(days, truckId), {
