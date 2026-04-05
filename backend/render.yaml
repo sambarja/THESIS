@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: fleet-monitor-api
+    runtime: node
+    region: singapore
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false

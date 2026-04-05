@@ -6,7 +6,17 @@ const bcrypt  = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-app.use(cors());
+
+// Allow only the configured frontend origin.
+// In production set ALLOWED_ORIGIN to the deployed frontend URL,
+// e.g. https://fleet-dashboard.vercel.app
+// In development it falls back to localhost Vite dev server.
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
+app.use(cors({
+  origin: ALLOWED_ORIGIN,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 // Service role key bypasses RLS — server-side only, never exposed to client
